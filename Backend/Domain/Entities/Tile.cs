@@ -2,7 +2,7 @@ using Backend.Domain.Enums;
 using Backend.Domain.Interfaces;
 using Backend.Domain.ValueObjects;
 
-public interface ITile
+class Tile : ITile
 {
     public TileType Type { get; set; }
     public Point Point { get; set; }
@@ -15,4 +15,15 @@ public interface ITile
     public int? House { get; set; }
 
     public bool? HasHotel { get; set; }
+
+    public Tile(TileType type, Point point)
+    {
+        Type = type;
+        Point = point;
+        Pieces = new List<IPiece>();
+        Asset = null;
+        Player = null;
+        House = null;
+        HasHotel = null;
+    }
 }

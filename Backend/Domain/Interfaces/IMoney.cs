@@ -1,3 +1,5 @@
+namespace Backend.Domain.Interfaces;
+
 using Backend.Domain.Enums;
 
 public interface IMoney

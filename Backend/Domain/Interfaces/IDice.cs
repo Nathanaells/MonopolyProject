@@ -1,5 +1,7 @@
+namespace Domain.Interfaces;
+
 public interface IDice
 {
-    public int MaxValue { get; set; }
+    public int MaxRolled { get; set; }
     public int Roll();
 }

@@ -1,5 +1,7 @@
 using Backend.Domain.Enums;
 
+namespace Backend.Domain.Interfaces;
+
 public interface IAsset
 {
     public int Price { get; set; }

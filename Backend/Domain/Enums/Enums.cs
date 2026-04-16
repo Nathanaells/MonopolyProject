@@ -1,4 +1,4 @@
-namespace Backend.Domain.Enums;
+namespace Domain.Enums;
 
 public enum TileType
 {
