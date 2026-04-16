@@ -1,4 +1,4 @@
-namespace Domain.Interfaces;
+namespace Backend.Domain.Interfaces;
 
 public interface IDice
 {

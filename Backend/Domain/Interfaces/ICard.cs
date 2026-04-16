@@ -1,4 +1,4 @@
-using Domain.Enums;
+using Backend.Domain.Enums;
 
 namespace Backend.Domain.Interfaces;
 
