@@ -10,7 +10,7 @@ class Tile : ITile
 
     public IAsset? Asset { get; set; }
 
-    public IPlayer? Player { get; set; }
+    public IPlayer? Owner { get; set; }
 
     public int? House { get; set; }
 
@@ -22,7 +22,7 @@ class Tile : ITile
         Point = point;
         Pieces = new List<IPiece>();
         Asset = null;
-        Player = null;
+        Owner = null;
         House = null;
         HasHotel = null;
     }

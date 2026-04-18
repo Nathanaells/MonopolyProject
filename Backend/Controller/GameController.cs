@@ -10,8 +10,14 @@ class GameController : ControllerBase
 {
     private readonly Game _game;
 
-    public GameController(Game game)
+    public GameController()
     {
-        _game = game;
+        
     }
+
+    [HttpGet("startgame")]
+    public void StartGame(){
+
+    }
+
 }
