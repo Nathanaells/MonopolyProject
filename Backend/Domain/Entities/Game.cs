@@ -115,6 +115,11 @@ class Game
         return _board.Tiles.First(t => t.Type == type);
     }
 
+    private ITile GetTileByPropertyCity(PropertyCity city)
+    {
+        return _board.Tiles.First(t => t.Asset != null && t.Asset.City.Equals(city));
+    }
+
     public void SendPieceToJail(IPlayer player)
     {
         var jailTile = GetTileByType(TileType.JailTile);
