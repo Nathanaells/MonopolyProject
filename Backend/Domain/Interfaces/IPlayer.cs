@@ -6,4 +6,5 @@ public interface IPlayer
     public int DoubleRoll { get; set; }
     public bool IsInJail { get; set; }
     public bool IsBankrupt { get; set; }
+    public int JailFreeCardCount { get; set; }
 }

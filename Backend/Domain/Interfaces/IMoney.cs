@@ -1,8 +1,6 @@
 namespace Backend.Domain.Interfaces;
 
-using Backend.Domain.Enums;
-
 public interface IMoney
 {
-    public MoneyValue Value { get; set; }
+    public int Value { get; set; }
 }

@@ -1,8 +1,7 @@
-namespace Backend.Domain.GameEntity;
+namespace Backend.Domain.Entities;
 
 using Backend.Domain.Enums;
 using Backend.Domain.Interfaces;
-using Backend.Helpers;
 class Game
 {
     private IBoard _board;
@@ -18,12 +17,15 @@ class Game
     private Dictionary<IPlayer, IPiece> _playerPiece;
     private Dictionary<IPlayer, List<IMoney?>> _playerData;
 
-    public event Action<IPlayer, IPiece> PlayerSentToJail;
+    public event Action<IPlayer, IPiece>? PlayerSentToJail;
 
-    public event Action<IPlayer> PlayerBankrupt;
-    public event Action<IPlayer> IsGameEnded;
+    public event Action<IPlayer>? PlayerBankrupt;
+    public event Action<IPlayer>? IsGameEnded;
 
     public IPlayer CurrentPlayer => _players[_currentPlayerIndex];
+    public List<ICard> Cards => _cards;
+    public List<IPiece> Pieces => _pieces;
+    public bool GameEnded => _gameEnded;
 
     public Game(
         IBoard board,
@@ -124,7 +126,6 @@ class Game
 
     public int HandleDiceRoll(IDice dice1, IDice dice2)
     {
-        // Logic for handling a dice roll, including checking for doubles and sending the player to jail if they roll three doubles in a row.
         int roll = dice1.Roll() + dice2.Roll();
         return roll;
 
@@ -149,65 +150,125 @@ class Game
         }
 
         return false;
-        // Logic for checking if the player is bankrupt and updating the player's bankruptcy status.
+
     }
 
     private bool CheckPlayerJailStatus(IPlayer player)
     {
+
+        if (player == null)
+        {
+            throw new Exception("Player cannot be null.");
+        }
+
+
         if (player.IsInJail)
         {
-            // Logic for handling a player who is in jail, such as allowing them to pay a fine or use a "Get Out of Jail Free" card to get out of jail.
+
             return true;
         }
         else
         {
             return false;
         }
-        // Logic for checking if the player is in jail and updating the player's jail status.
+
     }
 
     private bool IsOnOwnedProperty(ITile tile)
     {
         if (tile.Owner != null)
         {
-            // Logic for checking if the tile is owned by another player and handling rent payment if necessary.
             return true;
         }
         else
         {
             return false;
         }
-        // Logic for checking if the tile the player landed on is owned by another player and handling rent payment if necessary.
     }
 
     public void RemovePlayer(IPlayer player)
     {
+        if (player == null)
+        {
+            throw new Exception("Player cannot be null.");
+        }
+
         _players.Remove(player);
         _playerPiece.Remove(player);
         _playerData.Remove(player);
-        // Logic for removing a player from the game if they are bankrupt.
     }
 
     public void SubstractPlayerMoney(IPlayer player, IMoney money)
     {
-        if (_playerData[player] != null)
+        if (player == null)
         {
-            _playerData[player].Remove(money);
+            throw new Exception("Player cannot be null.");
         }
-        // Logic for subtracting money from a player's total and checking for bankruptcy.
+
+        if (money == null)
+        {
+            throw new Exception("Money cannot be null.");
+        }
+
+        if (!_playerData.ContainsKey(player) || _playerData[player] == null)
+        {
+            throw new Exception("Player data cannot be null.");
+        }
+
+        int currentMoney = _playerData[player].Where(m => m != null).Sum(m => m!.Value);
+        if (currentMoney < money.Value)
+        {
+            throw new Exception("Not enough money.");
+        }
+
+        _playerData[player].Add(new Money(-money.Value));
     }
 
     public void TransferPlayerMoney(IPlayer from, IPlayer to, IMoney money)
     {
-        _playerData[from].Remove(money);
-        _playerData[to].Add(money);
-        // Logic for transferring money from one player to another, such as when paying rent or buying a property.
+        if (from == null || to == null)
+        {
+            throw new Exception("Players cannot be null.");
+        }
+
+        if (money == null)
+        {
+            throw new Exception("Money cannot be null.");
+        }
+
+        if (!_playerData.ContainsKey(from) || !_playerData.ContainsKey(to) || _playerData[from] == null || _playerData[to] == null)
+        {
+            throw new Exception("Player data cannot be null.");
+        }
+
+        int fromMoney = _playerData[from].Where(m => m != null).Sum(m => m!.Value);
+        if (fromMoney < money.Value)
+        {
+            throw new Exception("Not enough money to transfer.");
+        }
+
+        _playerData[from].Add(new Money(-money.Value));
+        _playerData[to].Add(new Money(money.Value));
     }
 
     public void AddPlayerMoney(IPlayer player, IMoney money)
     {
-        _playerData[player].Add(money);
-        // Logic for adding money to a player's total, such as when passing Go or collecting rent.
+        if (player == null)
+        {
+            throw new Exception("Player cannot be null.");
+        }
+
+        if (money == null)
+        {
+            throw new Exception("Money cannot be null.");
+        }
+
+        if (!_playerData.ContainsKey(player) || _playerData[player] == null)
+        {
+            throw new Exception("Player data cannot be null.");
+        }
+
+        _playerData[player].Add(new Money(money.Value));
     }
 
     public IPiece GetPieceLocation(IPlayer player)
@@ -216,69 +277,150 @@ class Game
         return PlayerData.Pieces.First(p => p == _playerPiece[player]);
     }
 
-    // public void GetCurrentPlayer(IPlayer player)
-    // {
-    //     // Logic for determining the current player based on the turn order and updating the game state accordingly.
-    // }
-
     public void BuyProperty(IPlayer player)
     {
-
-
-        // Logic for allowing a player to buy a property if they have enough money and the property is not already owned.
         var tile = _board.Tiles.First(t => t.Pieces == _playerPiece[player]);
 
-        if (_playerData[player] == null && tile.Asset?.Price != null)
+        if (_playerData.ContainsKey(player) && _playerData[player] != null && tile.Asset?.Price != null)
         {
-            int moneyData = _playerData[player].Sum(m => MoneyConverter.ConvertTonInt(m));
-            int propertyPrice = MoneyConverter.ConvertTonInt(tile.Asset?.Price);
+            int moneyData = _playerData[player].Where(m => m != null).Sum(m => m!.Value);
+            int propertyPrice = tile.Asset.Price.Value;
 
             if (moneyData < propertyPrice)
             {
                 throw new Exception("Not enough money to buy the property.");
             }
 
-            moneyData -= propertyPrice;
-
-
-
-
-
+            _playerData[player].Add(new Money(-propertyPrice));
+            tile.Owner = player;
         }
         else
         {
             throw new Exception("Player data or property price is null.");
         }
-
-
-        //logic for handling the purchase of a property, including deducting the purchase price from the player's money and updating the property's ownership status.
-        _playerData[player].Remove(tile.Asset?.Price);
     }
 
-    public void SellProperty(IPlayer player, ITile tile)
+    public void SellProperty(IPlayer owner)
     {
-        // Logic for allowing a player to sell a property they own back to the bank or to another player.
+        if (owner == null)
+        {
+            throw new Exception("Player cannot be null.");
+        }
+
+
+        _board.Tiles.Where(t => t.Owner == owner).ToList().ForEach(t =>
+        {
+            if (t.Asset?.Price != null)
+            {
+                int salePrice = t.Asset.Price.Value / 2;
+                _playerData[owner].Add(new Money(salePrice));
+                t.Owner = null;
+            }
+        });
     }
 
     public bool isPropertyAvailable(ITile tile)
     {
-        return true;
-        // Logic for checking if a property is available for purchase, meaning it is not currently owned by another player.
+        if (tile == null)
+        {
+            throw new Exception("Tile cannot be null.");
+        }
+
+        if (tile.Asset != null && tile.Owner == null)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
     }
 
     public void ExecuteCard(ICard card, IPlayer player)
     {
-        if (card.Behaviour == CardBehaviour.AdvanceToGo)
-        {
-            var goTile = GetTileByType(TileType.StartTile);
 
+        if (card == null)
+        {
+            throw new Exception("Card cannot be null.");
+        }
+
+        if (player == null)
+        {
+            throw new Exception("Player cannot be null.");
+        }
+
+
+        if (card is CommunityCard)
+        {
+            switch (card.Behaviour)
+            {
+                case CardBehaviour.BankError:
+                    _playerData[player].Add(new Money(MoneyValue.fifty));
+                    break;
+                case CardBehaviour.DoctorFees:
+                    _playerData[player].Add(new Money(-MoneyValue.fifty));
+                    break;
+                case CardBehaviour.FromSaleOfStock:
+                    _playerData[player].Add(new Money(MoneyValue.fifty));
+                    break;
+                case CardBehaviour.HolidayFundMatures:
+                    _playerData[player].Add(new Money(MoneyValue.hundred));
+                    break;
+                case CardBehaviour.IncomeTaxRefund:
+                    _playerData[player].Add(new Money(MoneyValue.twenty));
+                    break;
+                case CardBehaviour.Birthday:
+                    _playerData[player].Add(new Money(MoneyValue.ten));
+                    break;
+                case CardBehaviour.LifeInsuranceMatures:
+                    _playerData[player].Add(new Money(MoneyValue.hundred));
+                    break;
+                case CardBehaviour.PayHospitalFees:
+                    _playerData[player].Add(new Money(-MoneyValue.hundred));
+                    break;
+                case CardBehaviour.PaySchoolFees:
+                    _playerData[player].Add(new Money(-MoneyValue.fifty));
+                    break;
+                case CardBehaviour.ConsultancyFee:
+                    _playerData[player].Add(new Money(MoneyValue.twenty + MoneyValue.five));
+                    break;
+                case CardBehaviour.StreetRepairs:
+                    _playerData[player].Add(new Money(-MoneyValue.twenty + MoneyValue.twenty));
+                    break;
+                case CardBehaviour.BeautyContestPrize:
+                    _playerData[player].Add(new Money(MoneyValue.ten));
+                    break;
+                case CardBehaviour.InheritMoney:
+                    _playerData[player].Add(new Money(MoneyValue.twoHundred));
+                    break;
+                case CardBehaviour.GetOutOfJailFree:
+                    player.JailFreeCardCount += 1;
+                    break;
+            }
+        }
+
+        if (card is ChanceCard)
+        {
+            switch (card.Behaviour)
+            {
+                case CardBehaviour.AdvanceToIllinois:
+                    var currentTile = _board.Tiles.First(t => t.Pieces.Contains(_playerPiece[player]));
+                    currentTile.Pieces.Remove(_playerPiece[player]);
+
+                    var illinoisTile = GetTileByType(TileType.RentTile);
+                    illinoisTile.Pieces.Add(_playerPiece[player]);
+
+
+
+                    break;
+            }
         }
 
     }
 
     public void ExecuteTile(ITile tile, IPlayer player)
     {
-        // Logic for executing the action associated with the tile the player landed on, such as drawing a card, paying rent, or going to jail.
+
     }
 
     public bool CheckWinner()

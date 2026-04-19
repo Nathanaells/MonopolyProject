@@ -1,4 +1,4 @@
-using Backend.Domain.GameEntity;
+using Backend.Domain.Entities;
 
 namespace Backend.Controller.GameController;
 
@@ -8,15 +8,16 @@ using Microsoft.AspNetCore.Mvc;
 [Route("api/[controller]")]
 class GameController : ControllerBase
 {
-    private readonly Game _game;
+    private readonly Game? _game;
 
     public GameController()
     {
-        
+
     }
 
     [HttpGet("startgame")]
-    public void StartGame(){
+    public void StartGame()
+    {
 
     }
 

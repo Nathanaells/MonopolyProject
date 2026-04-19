@@ -6,5 +6,5 @@ public interface IAsset
 {
     public IMoney Price { get; set; }
     public ICity City { get; set; }
-    Color Color { get; set; }
+    public Color? Color { get; set; }
 }

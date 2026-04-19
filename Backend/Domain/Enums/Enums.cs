@@ -11,13 +11,13 @@ public enum TileType
     DrawCommunity,
     PayTaxTile,
     FreeParkingTile,
+    GoToJailTile,
 }
 
 public enum PropertyCity
 {
     MediterraneanAvenue,
     BalticAvenue,
-
     OrientalAvenue,
     VermontAvenue,
     ConnecticutAvenue,
@@ -26,8 +26,29 @@ public enum PropertyCity
     StatesAvenue,
     VirginiaAvenue,
 
-    Boardwalk,
+    // Orange
+    StJamesPlace,
+    TennesseeAvenue,
+    NewYorkAvenue,
+    KentuckyAvenue,
+    IndianaAvenue,
+    IllinoisAvenue,
+
+    AtlanticAvenue,
+    VentnorAvenue,
+    MarvinGardens,
+    PacificAvenue,
+    NorthCarolinaAvenue,
+    PennsylvaniaAvenue,
     ParkPlace,
+    Boardwalk,
+
+    ReadingRailroad,
+    PennsylvaniaRailroad,
+    BORailroad,
+    ShortLineRailroad,
+    ElectricCompany,
+    WaterWorks
 }
 
 public enum Color
@@ -54,16 +75,6 @@ public enum PieceType
     Wheelbarrow,
 }
 
-public enum MoneyValue
-{
-    One = 1,
-    Five = 5,
-    Ten = 10,
-    Twenty = 20,
-    Fifty = 50,
-    OneHundred = 100,
-    FiveHundred = 500,
-}
 
 public enum CardBehaviour
 {
