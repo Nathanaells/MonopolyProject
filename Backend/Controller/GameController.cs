@@ -46,6 +46,30 @@ public class GameController : ControllerBase
         return Ok(BuildState(_activeGame));
     }
 
+    [HttpGet("board/tiles")]
+    public ActionResult<List<TileResponse>> GetBoardTiles()
+    {
+        if (_activeGame == null)
+        {
+            return BadRequest("Game belum dimulai.");
+        }
+
+        var tiles = _activeGame.Board.Tiles.Select((tile, index) => new TileResponse(
+            index,
+            tile.Type.ToString(),
+            tile.Point.X,
+            tile.Point.Y,
+            tile.Asset?.City.PropertyCity.ToString(),
+            tile.Asset?.Price.Value,
+            tile.Asset?.Color.ToString(),
+            tile.Owner?.Name,
+            tile.House,
+            tile.HasHotel
+        )).ToList();
+
+        return Ok(tiles);
+    }
+
     [HttpPost("turn/roll")]
     public ActionResult<RollTurnResponse> RollTurn()
     {
@@ -274,6 +298,19 @@ public record SellBuildingRequest(
 );
 
 public record ExecuteCardRequest(CardBehaviour Behaviour, string CardType, string? Description = null);
+
+public record TileResponse(
+    int Index,
+    string Type,
+    int PointX,
+    int PointY,
+    string? City,
+    int? Price,
+    string? Color,
+    string? Owner,
+    int? Houses,
+    bool? HasHotel
+);
 
 public record RollTurnResponse(
     int DiceTotal,
