@@ -12,6 +12,8 @@ public enum TileType
     PayTaxTile,
     FreeParkingTile,
     GoToJailTile,
+    UtilityTile,
+    RailroadTile,
 }
 
 public enum PropertyCity
@@ -43,12 +45,15 @@ public enum PropertyCity
     ParkPlace,
     Boardwalk,
 
+    // Railroads
     ReadingRailroad,
     PennsylvaniaRailroad,
     BORailroad,
     ShortLineRailroad,
+
+    //Utilities
     ElectricCompany,
-    WaterWorks
+    WaterWorks,
 }
 
 public enum Color
@@ -74,7 +79,6 @@ public enum PieceType
     Cannon,
     Wheelbarrow,
 }
-
 
 public enum CardBehaviour
 {
