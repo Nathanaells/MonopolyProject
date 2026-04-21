@@ -415,8 +415,6 @@ class Game
                     var illinoisTile = GetTileByType(TileType.RentTile);
                     illinoisTile.Pieces.Add(_playerPiece[player]);
 
-
-
                     break;
             }
         }
