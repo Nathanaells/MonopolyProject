@@ -1,34 +1,6 @@
-const API_BASE = "http://localhost:5126/api/game";
-
-export interface TileData {
-  index: number;
-  type: string;
-  pointX: number;
-  pointY: number;
-  city?: string;
-  price?: number;
-  color?: string;
-  owner?: string;
-  houses?: number;
-  hasHotel?: boolean;
-}
-
-export interface GameState {
-  isGameEnded: boolean;
-  winner?: string;
-  currentPlayer: string;
-  players: PlayerState[];
-}
-
-export interface PlayerState {
-  name: string;
-  balance: number;
-  isInJail: boolean;
-  isBankrupt: boolean;
-  tileType: string;
-  tileProperty?: string;
-  properties: string[];
-}
+import { API_BASE } from "../Constant/Url";
+import type { TileData, GameState } from "../Interfaces/Interface";
+import { ShowError } from "../Constant/ToastUI";
 
 export const gameService = {
   async startGame(playerNames: string[]): Promise<GameState> {
@@ -37,8 +9,14 @@ export const gameService = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ playerNames }),
     });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      ShowError(data.message || "Failed to start game");
+      throw new Error(data.message || "Failed to start game");
+    }
+    return data;
   },
 
   async getGameState(): Promise<GameState> {
@@ -49,8 +27,13 @@ export const gameService = {
 
   async getBoardTiles(): Promise<TileData[]> {
     const res = await fetch(`${API_BASE}/board/tiles`);
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    const data: TileData[] = await res.json();
+    if (!res.ok) {
+      ShowError(res.statusText || "Failed to load board tiles");
+    }
+
+    // Remove toast from here, will be handled in hook
+    return data;
   },
 
   async rollTurn(): Promise<any> {

@@ -21,17 +21,16 @@ public interface IGameController
 
 [ApiController]
 [Route("api/[controller]")]
-public class GameController : ControllerBase
+public class GameController : ControllerBase, IGameController
 {
     private static Game? _activeGame;
+    private static bool _awaitingBuyDecision = false;
 
     [HttpPost("start")]
     public ActionResult<GameStateResponse> StartGame([FromBody] StartGameRequestDTO request)
     {
         if (request.PlayerNames == null || request.PlayerNames.Count < 2)
-        {
             return BadRequest("Minimal 2 pemain.");
-        }
 
         var board = BoardFactory.CreateBoard();
         var players = PlayerFactory.CreatePlayers(request.PlayerNames.Distinct().ToArray());
@@ -40,61 +39,57 @@ public class GameController : ControllerBase
         var money = MoneyFactory.CreateMoney();
 
         _activeGame = new Game(board, players, pieces, cards, money);
+        _awaitingBuyDecision = false;
 
-        return Ok(BuildState(_activeGame!));
+        return Ok(BuildState(_activeGame));
     }
+
 
     [HttpGet("state")]
     public ActionResult<GameStateResponse> GetState()
     {
         if (_activeGame == null)
-        {
             return BadRequest("Game belum dimulai.");
-        }
 
         return Ok(BuildState(_activeGame));
     }
+
+
 
     [HttpGet("board/tiles")]
     public ActionResult<List<TileResponseDTO>> GetBoardTiles()
     {
         if (_activeGame == null)
-        {
             return BadRequest("Game belum dimulai.");
-        }
 
-        var tiles = _activeGame
-            .Board.Tiles.Select(
-                (tile, index) =>
-                    new TileResponseDTO(
-                        index,
-                        tile.Type.ToString(),
-                        new PointDTO(tile.Point.X, tile.Point.Y),
-                        tile.Asset == null
-                            ? null
-                            : new AssetResponseDTO(
-                                (int)tile.Asset.Price.Value,
-                                tile.Asset.City.PropertyCity.ToString(),
-                                tile.Asset.Color?.ToString() ?? ""
-                            ),
-                        tile.Owner == null
-                            ? null
-                            : new PlayerResponseDTO(
-                                tile.Owner.Name,
-                                _activeGame.GetPlayerBalance(tile.Owner),
-                                tile.Owner.IsInJail,
-                                tile.Owner.IsBankrupt,
-                                _activeGame
-                                    .GetPlayerProperties(tile.Owner)
-                                    .Select(t => t.Asset?.City.PropertyCity.ToString())
-                                    .Where(x => x is not null)
-                                    .Cast<string>()
-                                    .ToList()
-                            ),
-                        tile.House,
-                        tile.HasHotel
-                    )
-            )
+        var tiles = _activeGame.Board.Tiles
+            .Select((tile, index) => new TileResponseDTO(
+                index,
+                tile.Type.ToString(),
+                new PointDTO(tile.Point.X, tile.Point.Y),
+                tile.Asset == null
+                    ? null
+                    : new AssetResponseDTO(
+                        (int)tile.Asset.Price.Value,
+                        tile.Asset.City.PropertyCity.ToString(),
+                        tile.Asset.Color?.ToString() ?? ""
+                    ),
+                tile.Owner == null
+                    ? null
+                    : new PlayerResponseDTO(
+                        tile.Owner.Name,
+                        _activeGame.GetPlayerBalance(tile.Owner),
+                        tile.Owner.IsInJail,
+                        tile.Owner.IsBankrupt,
+                        _activeGame.GetPlayerProperties(tile.Owner)
+                            .Select(t => t.Asset?.City.PropertyCity.ToString())
+                            .Where(x => x is not null)
+                            .Cast<string>()
+                            .ToList()
+                    ),
+                tile.House,
+                tile.HasHotel
+            ))
             .ToList();
 
         return Ok(tiles);
@@ -104,97 +99,143 @@ public class GameController : ControllerBase
     public ActionResult<RollTurnResponseDTO> RollTurn()
     {
         if (_activeGame == null)
-        {
             return BadRequest("Game belum dimulai.");
-        }
 
         if (_activeGame.GameEnded)
-        {
             return BadRequest("Game sudah selesai.");
-        }
+
+        if (_awaitingBuyDecision)
+            return BadRequest("Selesaikan keputusan beli properti terlebih dahulu.");
 
         var currentPlayer = _activeGame.CurrentPlayer;
-        var dice1 = new Dice();
-        var dice2 = new Dice();
-        var total = _activeGame.HandleDiceRoll(dice1, dice2);
 
-        _activeGame.MovePiece(currentPlayer, total);
+        if (currentPlayer.IsBankrupt)
+            return BadRequest("Pemain sudah bangkrut.");
 
-        var currentTile = _activeGame.GetCurrentTile(currentPlayer);
-        bool requiresBuyDecision = _activeGame.isPropertyAvailable(currentTile);
-        ICard? drawnCard = null;
-
-        if (!requiresBuyDecision)
+        if (currentPlayer.IsInJail)
         {
-            _activeGame.TryExecuteLandingForCurrentPlayer(out drawnCard);
+            _activeGame.EndGame();
+            if (!_activeGame.GameEnded)
+                _activeGame.Playturn();
+
+            return Ok(new RollTurnResponseDTO(
+                DiceTotal: 0,
+                LandedTileType: "InJail",
+                LandedProperty: null,
+                RequiresBuyDecision: false,
+                DrawnCardDescription: null,
+                State: BuildState(_activeGame)
+            ));
         }
 
-        _activeGame.EndGame();
+        var dice1 = new Dice();
+        var dice2 = new Dice();
+        int total = _activeGame.HandleDiceRoll(dice1, dice2);
+        _activeGame.MovePiece(currentPlayer, total);
 
-        return Ok(
-            new RollTurnResponseDTO(
-                total,
-                currentTile.Type.ToString(),
-                currentTile.Asset?.City.PropertyCity.ToString(),
-                requiresBuyDecision,
-                drawnCard?.Description,
-                BuildState(_activeGame)
-            )
-        );
+        var landedTile = _activeGame.GetCurrentTile(currentPlayer);
+        bool requiresBuyDecision = false;
+        ICard? drawnCard = null;
+
+
+        if (_activeGame.isPropertyAvailable(landedTile))
+        {
+
+            requiresBuyDecision = true;
+            _awaitingBuyDecision = true;
+        }
+        else
+        {
+
+            _activeGame.TryExecuteLandingForCurrentPlayer(out drawnCard);
+            var tileAfterExecution = _activeGame.GetCurrentTile(currentPlayer);
+            bool playerMovedByCard = drawnCard != null &&
+                                     !ReferenceEquals(tileAfterExecution, landedTile);
+
+            if (playerMovedByCard && _activeGame.isPropertyAvailable(tileAfterExecution))
+            {
+                requiresBuyDecision = true;
+                _awaitingBuyDecision = true;
+
+
+                landedTile = tileAfterExecution;
+            }
+            else
+            {
+
+                _activeGame.EndGame();
+                if (!_activeGame.GameEnded)
+                    _activeGame.Playturn();
+            }
+        }
+
+        return Ok(new RollTurnResponseDTO(
+            DiceTotal: total,
+            LandedTileType: landedTile.Type.ToString(),
+            LandedProperty: landedTile.Asset?.City.PropertyCity.ToString(),
+            RequiresBuyDecision: requiresBuyDecision,
+            DrawnCardDescription: drawnCard?.Description,
+            State: BuildState(_activeGame)
+        ));
     }
+
 
     [HttpPost("turn/buy-property")]
     public ActionResult<GameStateResponse> BuyProperty([FromBody] BuyPropertyRequestDTO request)
     {
         if (_activeGame == null)
-        {
             return BadRequest("Game belum dimulai.");
-        }
 
-        bool result = _activeGame.AttemptBuyCurrentProperty(_activeGame.CurrentPlayer, request.Buy);
-        if (!result && request.Buy)
-        {
-            return BadRequest(
-                "Gagal beli properti (mungkin uang tidak cukup / bukan properti tersedia)."
-            );
-        }
+        if (!_awaitingBuyDecision)
+            return BadRequest("Tidak ada properti yang menunggu keputusan pembelian.");
+
+        _awaitingBuyDecision = false;
+
+
+
+        bool bought = _activeGame.AttemptBuyCurrentProperty(_activeGame.CurrentPlayer, request.Buy);
+        if (!bought && request.Buy)
+            return BadRequest("Gagal beli properti (uang tidak cukup atau properti tidak tersedia).");
+
 
         _activeGame.EndGame();
+        if (!_activeGame.GameEnded)
+            _activeGame.Playturn();
+
         return Ok(BuildState(_activeGame));
     }
 
-    // [HttpPost("turn/end")]
-    // public ActionResult<GameStateResponse> EndTurn()
-    // {
-    //     if (_activeGame == null)
-    //     {
-    //         return BadRequest("Game belum dimulai.");
-    //     }
 
-    //     _activeGame.EndGame();
-    //     if (!_activeGame.GameEnded)
-    //     {
-    //         _activeGame.Playturn();
-    //     }
 
-    //     return Ok(BuildState(_activeGame));
-    // }
+    [HttpPost("turn/end")]
+    public ActionResult<GameStateResponse> EndTurn()
+    {
+        if (_activeGame == null)
+            return BadRequest("Game belum dimulai.");
+
+        if (_activeGame.GameEnded)
+            return BadRequest("Game sudah selesai.");
+
+        _awaitingBuyDecision = false;
+
+        _activeGame.EndGame();
+        if (!_activeGame.GameEnded)
+            _activeGame.Playturn();
+
+        return Ok(BuildState(_activeGame));
+    }
+
 
     [HttpPost("sell-property")]
     public ActionResult<SellResultResponseDTO> SellPropertyToBank(
-        [FromBody] SellPropertyRequestDTO request
-    )
+        [FromBody] SellPropertyRequestDTO request)
     {
         if (_activeGame == null)
-        {
             return BadRequest("Game belum dimulai.");
-        }
 
         var player = _activeGame.FindPlayerByName(request.PlayerName);
         if (player == null)
-        {
             return BadRequest("Pemain tidak ditemukan.");
-        }
 
         int income = _activeGame.SellPropertyToBank(player, request.City, request.IncludeBuildings);
         _activeGame.EndGame();
@@ -202,21 +243,18 @@ public class GameController : ControllerBase
         return Ok(new SellResultResponseDTO(income, BuildState(_activeGame)));
     }
 
+
+
     [HttpPost("sell-buildings")]
     public ActionResult<SellResultResponseDTO> SellBuildingsToBank(
-        [FromBody] SellBuildingRequestDTO request
-    )
+        [FromBody] SellBuildingRequestDTO request)
     {
         if (_activeGame == null)
-        {
             return BadRequest("Game belum dimulai.");
-        }
 
         var player = _activeGame.FindPlayerByName(request.PlayerName);
         if (player == null)
-        {
             return BadRequest("Pemain tidak ditemukan.");
-        }
 
         int income = _activeGame.SellBuildingsToBank(
             player,
@@ -229,22 +267,17 @@ public class GameController : ControllerBase
         return Ok(new SellResultResponseDTO(income, BuildState(_activeGame)));
     }
 
+
     [HttpPost("execute-card")]
     public ActionResult<GameStateResponse> ExecuteCardForCurrentPlayer(
-        [FromBody] ExecuteCardRequestDTO request
-    )
+        [FromBody] ExecuteCardRequestDTO request)
     {
         if (_activeGame == null)
-        {
             return BadRequest("Game belum dimulai.");
-        }
 
         ICard card = request.CardType.Equals("Chance", StringComparison.OrdinalIgnoreCase)
             ? new ChanceCard(request.Description ?? request.Behaviour.ToString(), request.Behaviour)
-            : new CommunityCard(
-                request.Description ?? request.Behaviour.ToString(),
-                request.Behaviour
-            );
+            : new CommunityCard(request.Description ?? request.Behaviour.ToString(), request.Behaviour);
 
         _activeGame.ExecuteCard(card, _activeGame.CurrentPlayer);
         _activeGame.EndGame();
@@ -254,29 +287,23 @@ public class GameController : ControllerBase
 
     private static GameStateResponse BuildState(Game game)
     {
-        var players = game
-            .Players.Select(p =>
-            {
-                var tile = game.GetCurrentTile(p);
-                var properties = game.GetPlayerProperties(p)
-                    .Select(t => t.Asset?.City.PropertyCity.ToString())
-                    .Where(x => x != null)
-                    .Cast<string>()
-                    .ToList();
+        var players = game.Players.Select(p =>
+        {
+            // GetPlayerProperties dipanggil sekali saja per player
+            var properties = game.GetPlayerProperties(p)
+                .Select(t => t.Asset?.City.PropertyCity.ToString())
+                .Where(x => x is not null)
+                .Cast<string>()
+                .ToList();
 
-                return new PlayerResponseDTO(
-                    p.Name,
-                    game.GetPlayerBalance(p),
-                    p.IsInJail,
-                    p.IsBankrupt,
-                    game.GetPlayerProperties(p)
-                        .Select(t => t.Asset?.City.PropertyCity.ToString())
-                        .Where(x => x is not null)
-                        .Cast<string>()
-                        .ToList()
-                );
-            })
-            .ToList();
+            return new PlayerResponseDTO(
+                p.Name,
+                game.GetPlayerBalance(p),
+                p.IsInJail,
+                p.IsBankrupt,
+                properties
+            );
+        }).ToList();
 
         return new GameStateResponse(
             game.GameEnded,
