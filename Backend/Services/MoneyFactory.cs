@@ -1,8 +1,6 @@
 namespace Backend.Services;
 
 using Backend.Domain.Interfaces;
-using Backend.Domain.Enums;
-
 
 public class MoneyFactory
 {
@@ -18,7 +16,6 @@ public class MoneyFactory
             new Money(MoneyValue.hundred),
             new Money(MoneyValue.twoHundred),
             new Money(MoneyValue.fiveHundred),
-
         };
     }
 }

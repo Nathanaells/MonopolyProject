@@ -1,36 +1,45 @@
 using Backend.Domain.Entities;
-using Backend.Domain.Enums;
 using Backend.Domain.Interfaces;
+using Backend.DTOs;
 using Backend.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Backend.Controller;
 
+public interface IGameController
+{
+    ActionResult<GameStateResponse> StartGame(StartGameRequestDTO request);
+    ActionResult<GameStateResponse> GetState();
+    ActionResult<List<TileResponseDTO>> GetBoardTiles();
+    ActionResult<RollTurnResponseDTO> RollTurn();
+    ActionResult<GameStateResponse> BuyProperty(BuyPropertyRequestDTO request);
+    ActionResult<GameStateResponse> EndTurn();
+    ActionResult<SellResultResponseDTO> SellPropertyToBank(SellPropertyRequestDTO request);
+    ActionResult<SellResultResponseDTO> SellBuildingsToBank(SellBuildingRequestDTO request);
+    ActionResult<GameStateResponse> ExecuteCardForCurrentPlayer(ExecuteCardRequestDTO request);
+}
+
 [ApiController]
 [Route("api/[controller]")]
 public class GameController : ControllerBase
 {
-    private static readonly object _lock = new();
     private static Game? _activeGame;
 
     [HttpPost("start")]
-    public ActionResult<GameStateResponse> StartGame([FromBody] StartGameRequest request)
+    public ActionResult<GameStateResponse> StartGame([FromBody] StartGameRequestDTO request)
     {
         if (request.PlayerNames == null || request.PlayerNames.Count < 2)
         {
             return BadRequest("Minimal 2 pemain.");
         }
 
-        lock (_lock)
-        {
-            var board = BoardFactory.CreateBoard();
-            var players = PlayerFactory.CreatePlayers(request.PlayerNames.Distinct().ToArray());
-            var pieces = PieceFactory.CreateStandardPieces();
-            var cards = CreateDefaultCards();
-            var money = MoneyFactory.CreateMoney();
+        var board = BoardFactory.CreateBoard();
+        var players = PlayerFactory.CreatePlayers(request.PlayerNames.Distinct().ToArray());
+        var pieces = PieceFactory.CreateStandardPieces();
+        var cards = CardFactory.CreateDefaultCards();
+        var money = MoneyFactory.CreateMoney();
 
-            _activeGame = new Game(board, players, pieces, cards, money);
-        }
+        _activeGame = new Game(board, players, pieces, cards, money);
 
         return Ok(BuildState(_activeGame!));
     }
@@ -47,31 +56,52 @@ public class GameController : ControllerBase
     }
 
     [HttpGet("board/tiles")]
-    public ActionResult<List<TileResponse>> GetBoardTiles()
+    public ActionResult<List<TileResponseDTO>> GetBoardTiles()
     {
         if (_activeGame == null)
         {
             return BadRequest("Game belum dimulai.");
         }
 
-        var tiles = _activeGame.Board.Tiles.Select((tile, index) => new TileResponse(
-            index,
-            tile.Type.ToString(),
-            tile.Point.X,
-            tile.Point.Y,
-            tile.Asset?.City.PropertyCity.ToString(),
-            tile.Asset?.Price.Value,
-            tile.Asset?.Color.ToString(),
-            tile.Owner?.Name,
-            tile.House,
-            tile.HasHotel
-        )).ToList();
+        var tiles = _activeGame
+            .Board.Tiles.Select(
+                (tile, index) =>
+                    new TileResponseDTO(
+                        index,
+                        tile.Type.ToString(),
+                        new PointDTO(tile.Point.X, tile.Point.Y),
+                        tile.Asset == null
+                            ? null
+                            : new AssetResponseDTO(
+                                (int)tile.Asset.Price.Value,
+                                tile.Asset.City.PropertyCity.ToString(),
+                                tile.Asset.Color?.ToString() ?? ""
+                            ),
+                        tile.Owner == null
+                            ? null
+                            : new PlayerResponseDTO(
+                                tile.Owner.Name,
+                                _activeGame.GetPlayerBalance(tile.Owner),
+                                tile.Owner.IsInJail,
+                                tile.Owner.IsBankrupt,
+                                _activeGame
+                                    .GetPlayerProperties(tile.Owner)
+                                    .Select(t => t.Asset?.City.PropertyCity.ToString())
+                                    .Where(x => x is not null)
+                                    .Cast<string>()
+                                    .ToList()
+                            ),
+                        tile.House,
+                        tile.HasHotel
+                    )
+            )
+            .ToList();
 
         return Ok(tiles);
     }
 
     [HttpPost("turn/roll")]
-    public ActionResult<RollTurnResponse> RollTurn()
+    public ActionResult<RollTurnResponseDTO> RollTurn()
     {
         if (_activeGame == null)
         {
@@ -102,7 +132,7 @@ public class GameController : ControllerBase
         _activeGame.EndGame();
 
         return Ok(
-            new RollTurnResponse(
+            new RollTurnResponseDTO(
                 total,
                 currentTile.Type.ToString(),
                 currentTile.Asset?.City.PropertyCity.ToString(),
@@ -114,7 +144,7 @@ public class GameController : ControllerBase
     }
 
     [HttpPost("turn/buy-property")]
-    public ActionResult<GameStateResponse> BuyProperty([FromBody] BuyPropertyRequest request)
+    public ActionResult<GameStateResponse> BuyProperty([FromBody] BuyPropertyRequestDTO request)
     {
         if (_activeGame == null)
         {
@@ -124,32 +154,36 @@ public class GameController : ControllerBase
         bool result = _activeGame.AttemptBuyCurrentProperty(_activeGame.CurrentPlayer, request.Buy);
         if (!result && request.Buy)
         {
-            return BadRequest("Gagal beli properti (mungkin uang tidak cukup / bukan properti tersedia).");
+            return BadRequest(
+                "Gagal beli properti (mungkin uang tidak cukup / bukan properti tersedia)."
+            );
         }
 
         _activeGame.EndGame();
         return Ok(BuildState(_activeGame));
     }
 
-    [HttpPost("turn/end")]
-    public ActionResult<GameStateResponse> EndTurn()
-    {
-        if (_activeGame == null)
-        {
-            return BadRequest("Game belum dimulai.");
-        }
+    // [HttpPost("turn/end")]
+    // public ActionResult<GameStateResponse> EndTurn()
+    // {
+    //     if (_activeGame == null)
+    //     {
+    //         return BadRequest("Game belum dimulai.");
+    //     }
 
-        _activeGame.EndGame();
-        if (!_activeGame.GameEnded)
-        {
-            _activeGame.Playturn();
-        }
+    //     _activeGame.EndGame();
+    //     if (!_activeGame.GameEnded)
+    //     {
+    //         _activeGame.Playturn();
+    //     }
 
-        return Ok(BuildState(_activeGame));
-    }
+    //     return Ok(BuildState(_activeGame));
+    // }
 
     [HttpPost("sell-property")]
-    public ActionResult<SellResultResponse> SellPropertyToBank([FromBody] SellPropertyRequest request)
+    public ActionResult<SellResultResponseDTO> SellPropertyToBank(
+        [FromBody] SellPropertyRequestDTO request
+    )
     {
         if (_activeGame == null)
         {
@@ -165,11 +199,13 @@ public class GameController : ControllerBase
         int income = _activeGame.SellPropertyToBank(player, request.City, request.IncludeBuildings);
         _activeGame.EndGame();
 
-        return Ok(new SellResultResponse(income, BuildState(_activeGame)));
+        return Ok(new SellResultResponseDTO(income, BuildState(_activeGame)));
     }
 
     [HttpPost("sell-buildings")]
-    public ActionResult<SellResultResponse> SellBuildingsToBank([FromBody] SellBuildingRequest request)
+    public ActionResult<SellResultResponseDTO> SellBuildingsToBank(
+        [FromBody] SellBuildingRequestDTO request
+    )
     {
         if (_activeGame == null)
         {
@@ -190,11 +226,13 @@ public class GameController : ControllerBase
         );
 
         _activeGame.EndGame();
-        return Ok(new SellResultResponse(income, BuildState(_activeGame)));
+        return Ok(new SellResultResponseDTO(income, BuildState(_activeGame)));
     }
 
     [HttpPost("execute-card")]
-    public ActionResult<GameStateResponse> ExecuteCardForCurrentPlayer([FromBody] ExecuteCardRequest request)
+    public ActionResult<GameStateResponse> ExecuteCardForCurrentPlayer(
+        [FromBody] ExecuteCardRequestDTO request
+    )
     {
         if (_activeGame == null)
         {
@@ -203,51 +241,15 @@ public class GameController : ControllerBase
 
         ICard card = request.CardType.Equals("Chance", StringComparison.OrdinalIgnoreCase)
             ? new ChanceCard(request.Description ?? request.Behaviour.ToString(), request.Behaviour)
-            : new CommunityCard(request.Description ?? request.Behaviour.ToString(), request.Behaviour);
+            : new CommunityCard(
+                request.Description ?? request.Behaviour.ToString(),
+                request.Behaviour
+            );
 
         _activeGame.ExecuteCard(card, _activeGame.CurrentPlayer);
         _activeGame.EndGame();
 
         return Ok(BuildState(_activeGame));
-    }
-
-    private static List<ICard> CreateDefaultCards()
-    {
-        return new List<ICard>
-        {
-            new ChanceCard("Advance to GO", CardBehaviour.AdvanceToGo),
-            new ChanceCard("Advance to Illinois Avenue", CardBehaviour.AdvanceToIllinois),
-            new ChanceCard("Advance to St. Charles Place", CardBehaviour.AdvanceToStCharles),
-            new ChanceCard("Advance token to nearest Utility", CardBehaviour.AdvanceNearestUtility),
-            new ChanceCard("Advance token to nearest Railroad", CardBehaviour.AdvanceNearestRailroad),
-            new ChanceCard("Bank pays you dividend of 50", CardBehaviour.BankPaysDividend),
-            new ChanceCard("Get out of Jail Free", CardBehaviour.GetOutOfJailFree),
-            new ChanceCard("Go back three spaces", CardBehaviour.GoBackThreeSpaces),
-            new ChanceCard("Go to Jail", CardBehaviour.GoToJail),
-            new ChanceCard("Make general repairs", CardBehaviour.MakeGeneralRepairs),
-            new ChanceCard("Pay poor tax of 15", CardBehaviour.PayPoorTax),
-            new ChanceCard("Take trip to Reading Railroad", CardBehaviour.TakeTripToReadingRailroad),
-            new ChanceCard("Advance to Boardwalk", CardBehaviour.AdvanceToBoardwalk),
-            new ChanceCard("Chairman of the Board", CardBehaviour.ChairmanOfTheBoard),
-            new ChanceCard("Your building loan matures", CardBehaviour.YourBuildingLoanMatures),
-
-            new CommunityCard("Advance to GO", CardBehaviour.AdvanceToGo),
-            new CommunityCard("Bank error in your favor", CardBehaviour.BankError),
-            new CommunityCard("Doctor's fees", CardBehaviour.DoctorFees),
-            new CommunityCard("From sale of stock you get 50", CardBehaviour.FromSaleOfStock),
-            new CommunityCard("Get out of jail free", CardBehaviour.GetOutOfJailFree),
-            new CommunityCard("Go to jail", CardBehaviour.GoToJail),
-            new CommunityCard("Holiday fund matures", CardBehaviour.HolidayFundMatures),
-            new CommunityCard("Income tax refund", CardBehaviour.IncomeTaxRefund),
-            new CommunityCard("Birthday", CardBehaviour.Birthday),
-            new CommunityCard("Life insurance matures", CardBehaviour.LifeInsuranceMatures),
-            new CommunityCard("Pay hospital fees", CardBehaviour.PayHospitalFees),
-            new CommunityCard("Pay school fees", CardBehaviour.PaySchoolFees),
-            new CommunityCard("Receive consultancy fee", CardBehaviour.ConsultancyFee),
-            new CommunityCard("Street repairs", CardBehaviour.StreetRepairs),
-            new CommunityCard("Beauty contest prize", CardBehaviour.BeautyContestPrize),
-            new CommunityCard("Inherit money", CardBehaviour.InheritMoney),
-        };
     }
 
     private static GameStateResponse BuildState(Game game)
@@ -256,21 +258,22 @@ public class GameController : ControllerBase
             .Players.Select(p =>
             {
                 var tile = game.GetCurrentTile(p);
-                var properties = game
-                    .GetPlayerProperties(p)
+                var properties = game.GetPlayerProperties(p)
                     .Select(t => t.Asset?.City.PropertyCity.ToString())
                     .Where(x => x != null)
                     .Cast<string>()
                     .ToList();
 
-                return new PlayerStateResponse(
+                return new PlayerResponseDTO(
                     p.Name,
                     game.GetPlayerBalance(p),
                     p.IsInJail,
                     p.IsBankrupt,
-                    tile.Type.ToString(),
-                    tile.Asset?.City.PropertyCity.ToString(),
-                    properties
+                    game.GetPlayerProperties(p)
+                        .Select(t => t.Asset?.City.PropertyCity.ToString())
+                        .Where(x => x is not null)
+                        .Cast<string>()
+                        .ToList()
                 );
             })
             .ToList();
@@ -283,59 +286,3 @@ public class GameController : ControllerBase
         );
     }
 }
-
-public record StartGameRequest(List<string> PlayerNames);
-
-public record BuyPropertyRequest(bool Buy);
-
-public record SellPropertyRequest(string PlayerName, PropertyCity City, bool IncludeBuildings = true);
-
-public record SellBuildingRequest(
-    string PlayerName,
-    PropertyCity City,
-    int HousesToSell = 0,
-    bool SellHotel = false
-);
-
-public record ExecuteCardRequest(CardBehaviour Behaviour, string CardType, string? Description = null);
-
-public record TileResponse(
-    int Index,
-    string Type,
-    int PointX,
-    int PointY,
-    string? City,
-    int? Price,
-    string? Color,
-    string? Owner,
-    int? Houses,
-    bool? HasHotel
-);
-
-public record RollTurnResponse(
-    int DiceTotal,
-    string LandedTileType,
-    string? LandedProperty,
-    bool RequiresBuyDecision,
-    string? DrawnCardDescription,
-    GameStateResponse State
-);
-
-public record SellResultResponse(int Income, GameStateResponse State);
-
-public record GameStateResponse(
-    bool IsGameEnded,
-    string? Winner,
-    string CurrentPlayer,
-    List<PlayerStateResponse> Players
-);
-
-public record PlayerStateResponse(
-    string Name,
-    int Balance,
-    bool IsInJail,
-    bool IsBankrupt,
-    string TileType,
-    string? TileProperty,
-    List<string> Properties
-);

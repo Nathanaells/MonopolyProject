@@ -95,8 +95,9 @@ class Game
         do
         {
             _currentPlayerIndex = (_currentPlayerIndex + 1) % _players.Count;
-        }
-        while (_players[_currentPlayerIndex].IsBankrupt && _players.Count(p => !p.IsBankrupt) > 1);
+        } while (
+            _players[_currentPlayerIndex].IsBankrupt && _players.Count(p => !p.IsBankrupt) > 1
+        );
     }
 
     public void MovePiece(IPlayer player, int? step = null)
@@ -322,10 +323,7 @@ class Game
             throw new Exception("Money cannot be null.");
         }
 
-        if (
-            !_playerData.ContainsKey(from)
-            || !_playerData.ContainsKey(to)
-        )
+        if (!_playerData.ContainsKey(from) || !_playerData.ContainsKey(to))
         {
             throw new Exception("Player data cannot be null.");
         }
@@ -380,7 +378,11 @@ class Game
     {
         var tile = GetCurrentTile(player);
 
-        if (_playerData.ContainsKey(player) && _playerData[player] != null && tile.Asset?.Price != null)
+        if (
+            _playerData.ContainsKey(player)
+            && _playerData[player] != null
+            && tile.Asset?.Price != null
+        )
         {
             int moneyData = _playerData[player].Sum(m => m.Value);
             int propertyPrice = tile.Asset.Price.Value;
@@ -497,7 +499,12 @@ class Game
         };
     }
 
-    public int SellBuildingsToBank(IPlayer owner, PropertyCity city, int housesToSell, bool sellHotel)
+    public int SellBuildingsToBank(
+        IPlayer owner,
+        PropertyCity city,
+        int housesToSell,
+        bool sellHotel
+    )
     {
         var tile = GetTileByCity(city);
 
@@ -879,7 +886,9 @@ class Game
 
     public IPlayer? FindPlayerByName(string playerName)
     {
-        return _players.FirstOrDefault(p => p.Name.Equals(playerName, StringComparison.OrdinalIgnoreCase));
+        return _players.FirstOrDefault(p =>
+            p.Name.Equals(playerName, StringComparison.OrdinalIgnoreCase)
+        );
     }
 
     public bool IsPropertyOwnedBy(ITile tile, IPlayer player)
