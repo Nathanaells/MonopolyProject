@@ -64,8 +64,6 @@ public class Game
 
     public IBoard Board => _board;
 
-    public List<IMoney> GetMoney() => _money;
-
     public bool IsPieceAvailable(PieceType pieceType)
     {
         return !_takenPieces.ContainsKey(pieceType);
@@ -488,30 +486,6 @@ public class Game
         return _playerData[player].Sum(m => m.Value);
     }
 
-    public IPiece GetPieceLocation(IPlayer player)
-    {
-        var playerData = GetCurrentTile(player);
-        return playerData.Pieces.First(p => p == _playerPiece[player]);
-    }
-
-    public void BuyProperty(IPlayer player)
-    {
-        var tile = GetCurrentTile(player);
-        if (_playerData.ContainsKey(player) && _playerData[player] != null && tile.Asset?.Price != null)
-        {
-            int moneyData = _playerData[player].Sum(m => m.Value);
-            int propertyPrice = tile.Asset.Price.Value;
-            if (moneyData < propertyPrice) throw new Exception("Not enough money to buy the property.");
-
-            _playerData[player].Add(new Money(-propertyPrice));
-            tile.Owner = player;
-        }
-        else
-        {
-            throw new Exception("Player data or property price is null.");
-        }
-    }
-
     public bool AttemptBuyCurrentProperty(IPlayer player, bool wantsToBuy)
     {
         if (!wantsToBuy) return false;
@@ -605,28 +579,6 @@ public class Game
         return totalIncome;
     }
 
-    public void SellProperty(IPlayer owner, List<ITile> properties)
-    {
-        if (owner == null) throw new Exception("Player cannot be null.");
-        if (!_playerData.ContainsKey(owner)) throw new Exception("Player data not found.");
-
-        var playerProperties = GetPlayerProperties(owner);
-        int sellPrice = 0;
-
-        foreach (var property in properties)
-        {
-            if (!playerProperties.Contains(property))
-                throw new Exception("Property does not belong to player.");
-            if (property.Asset == null) throw new Exception("Invalid property.");
-            if ((property.House ?? 0) > 0 || property.HasHotel == true)
-                throw new Exception("Sell buildings first.");
-
-            sellPrice += property.Asset.Price.Value / 2;
-            property.Owner = null;
-        }
-
-        AddPlayerMoney(owner, new Money(sellPrice));
-    }
 
     private int GetHousePrice(IAsset asset)
     {
@@ -710,9 +662,6 @@ public class Game
         if (tile == null) throw new Exception("Tile cannot be null.");
         return tile.Asset != null && tile.Owner == null;
     }
-
-    public bool IsPropertyAvailableForCurrentPlayer() =>
-        isPropertyAvailable(GetCurrentTile(CurrentPlayer));
 
     public ICard DrawCard(TileType drawType)
     {
@@ -925,24 +874,6 @@ public class Game
 
     public bool IsPropertyOwnedBy(ITile tile, IPlayer player) =>
         tile.Owner != null && tile.Owner.Equals(player);
-
-    public bool TryExecuteLandingForCurrentPlayer(out ICard? drawnCard)
-    {
-        drawnCard = null;
-        var player = CurrentPlayer;
-        var tile = GetCurrentTile(player);
-
-        if (tile.Type == TileType.DrawChance || tile.Type == TileType.DrawCommunity)
-        {
-            drawnCard = DrawCard(tile.Type);
-            ExecuteCard(drawnCard, player);
-            NextPlayer();
-            return true;
-        }
-
-        ExecuteTile(tile, player);
-        return false;
-    }
 
     public bool CheckWinner()
     {
