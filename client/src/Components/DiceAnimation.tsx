@@ -2,13 +2,12 @@ import { useEffect, useRef, useState } from "react";
 
 interface Props {
   die1: number;
-  die2: number; 
-  rolling: boolean; 
+  die2: number;
+  rolling: boolean;
   onDone?: () => void;
 }
 
-
-const DOT_POSITIONS: Record<number, Array<[number, number]>> = {
+const dotPosition: Record<number, Array<[number, number]>> = {
   1: [[50, 50]],
   2: [
     [25, 25],
@@ -49,7 +48,7 @@ function DieFace({
   value: number;
   className?: string;
 }) {
-  const dots = DOT_POSITIONS[value] ?? DOT_POSITIONS[1];
+  const dots = dotPosition[value] ?? dotPosition[1];
   return (
     <div
       className={`relative w-14 h-14 rounded-xl shadow-lg select-none ${className}`}
