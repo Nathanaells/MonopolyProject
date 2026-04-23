@@ -1,15 +1,4 @@
-export interface TileData {
-  index: number;
-  type: string;
-  pointX: number;
-  pointY: number;
-  city?: string;
-  price?: number;
-  color?: string;
-  owner?: string;
-  houses?: number;
-  hasHotel?: boolean;
-}
+
 
 export interface GameState {
   isGameEnded: boolean;
@@ -23,14 +12,12 @@ export interface PlayerState {
   balance: number;
   isInJail: boolean;
   isBankrupt: boolean;
-  tileType: string;
-  tileProperty?: string;
   properties: string[];
 }
 
 export interface TilePosition {
-  gridColumn: string;
-  gridRow: string;
+  gridColumn: number;
+  gridRow: number;
   className: string;
 }
 
@@ -41,4 +28,21 @@ export interface RollResult {
   requiresBuyDecision: boolean;
   drawnCardDescription?: string;
   state: GameState;
+}
+
+export type TileData = {
+  index: number;
+  type: string;
+  position: {
+    x: number;
+    y: number;
+  },
+  asset?: {
+    price: number,
+    color: string,
+    city: string
+  },
+  owner?: string,
+  houses?: number,
+  hasHotel?: boolean
 }

@@ -21,8 +21,12 @@ export const gameService = {
 
   async getGameState(): Promise<GameState> {
     const res = await fetch(`${API_BASE}/state`);
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+
+    if(!res.ok){
+      ShowError(res.statusText || "Failed to fetch game state");
+    }
+    const data = await res.json();
+    return data;
   },
 
   async getBoardTiles(): Promise<TileData[]> {
@@ -31,15 +35,21 @@ export const gameService = {
     if (!res.ok) {
       ShowError(res.statusText || "Failed to load board tiles");
     }
-
-    // Remove toast from here, will be handled in hook
+  
+    console.log("Fetched tiles:", data);
     return data;
   },
 
   async rollTurn(): Promise<any> {
     const res = await fetch(`${API_BASE}/turn/roll`, { method: "POST" });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+
+    if(!res.ok){
+      ShowError(res.statusText || "Failed to roll dice");
+    }
+    const data = await res.json();
+    console.log("Roll turn response:", data);
+  
+    return data;
   },
 
   async buyProperty(buy: boolean): Promise<GameState> {
@@ -52,9 +62,5 @@ export const gameService = {
     return res.json();
   },
 
-  async endTurn(): Promise<GameState> {
-    const res = await fetch(`${API_BASE}/turn/end`, { method: "POST" });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
-  },
+  
 };

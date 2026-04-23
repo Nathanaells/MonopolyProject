@@ -26,7 +26,7 @@ export default function Home() {
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-5">
       <div className="bg-white p-10 rounded-xl shadow-2xl w-full max-w-md text-center">
         <h1 className="text-6xl font-bold text-white bg-red-600 border-2 border-black py-1 px-5 mb-8 inline-block">
-          MONOPOLY
+          Monopoly
         </h1>
 
         <div className="mb-6 text-left">

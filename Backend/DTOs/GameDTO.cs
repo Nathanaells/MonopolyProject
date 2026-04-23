@@ -1,6 +1,7 @@
 namespace Backend.DTOs;
 
 using Backend.Domain.Enums;
+using Backend.Domain.Interfaces;
 
 public record StartGameRequestDTO(List<string> PlayerNames);
 
@@ -63,4 +64,11 @@ public record PlayerResponseDTO(
     bool IsInJail,
     bool IsBankrupt,
     List<string> Properties
+);
+
+public record RollTurnResult(
+    int DiceTotal,
+    ITile LandedTile,
+    bool RequiresBuyDecision,
+    ICard? DrawnCard
 );

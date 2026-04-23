@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import type { GameState, RollResult } from "../Interfaces/Interface";
+import type { GameState, RollResult, TileData } from "../Interfaces/Interface";
 import { gameService } from "../services/gameService";
-import { useBoardTiles } from "../hooks/useBoardTiles";
-import "../Style/GameCSS.css";
-import { ShowSuccess } from "../Constant/ToastUI";
+import { buildBoard } from "../hooks/buildBoard";
+
+import { ShowSuccess, ShowError} from "../Constant/ToastUI";
+import Tiles from "../Components/Tiles";
 
 export default function Game() {
   const playerNamesString = localStorage.getItem("playerNames");
@@ -14,12 +15,11 @@ export default function Game() {
   const [error, setError] = useState<string | null>(null);
   const [diceRoll, setDiceRoll] = useState<RollResult | null>(null);
   const [buyPrompt, setBuyPrompt] = useState(false);
+  const [board, setBoard] = useState<(TileData | null)[][]>([]);
 
-  const { tiles, tilePositions, loading: tilesLoading } = useBoardTiles();
 
   useEffect(() => {
     const startGame = async () => {
-      //   console.log("Starting game with players:", playerNames);
       setLoading(true);
       setError(null);
       try {
@@ -37,11 +37,25 @@ export default function Game() {
     }
   }, []);
 
-  useEffect(() => {
-    if (!gameState) {
-      console.log("Updated game state:", gameState);
+
+  async function loadBoardTiles() {
+    try {
+      const fetchedTiles = await gameService.getBoardTiles();
+      const boardSize = 11; 
+      const builtBoard = buildBoard(fetchedTiles, boardSize);
+      setBoard(builtBoard);
+
+      console.log("Board after building:", builtBoard);
+    } catch (err) {
+      ShowError("Failed to load board tiles");
     }
-  }, [gameState]);
+  }      
+
+  useEffect(() => {
+    loadBoardTiles();
+  }, []);
+
+
   const handleRoll = async () => {
     setLoading(true);
     setError(null);
@@ -49,9 +63,13 @@ export default function Game() {
       const result = await gameService.rollTurn();
       setDiceRoll(result);
       setGameState(result.state);
-
+      ShowSuccess(`You rolled a ${result.diceTotal} and landed on ${result.landedProperty || result.landedTileType}!`);
       if (result.requiresBuyDecision) {
         setBuyPrompt(true);
+      }else{
+        setBuyPrompt(false);
+         setDiceRoll(null);
+         
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to roll dice");
@@ -65,38 +83,25 @@ export default function Game() {
     setError(null);
     try {
       const state = await gameService.buyProperty(buy);
+
+      
       setGameState(state);
       setBuyPrompt(false);
       setDiceRoll(null);
     } catch (err) {
+      console.error("Error buying property:", err);
       setError(err instanceof Error ? err.message : "Failed to buy property");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEndTurn = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const state = await gameService.endTurn();
-      setGameState(state);
-      setDiceRoll(null);
-      setBuyPrompt(false);
 
-      if (state.isGameEnded) {
-        ShowSuccess(`Game Over! Winner: ${state.winner}`);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to end turn");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (tilesLoading || !gameState) {
+  if (!gameState || board.length === 0) {
     return <div style={{ padding: "40px" }}>Loading board...</div>;
   }
+
+  const boardSize = 11;
 
   return (
     <>
@@ -161,23 +166,7 @@ export default function Game() {
                 borderRadius: "4px",
               }}
             >
-              🎲 Roll Dice
-            </button>
-            <button
-              onClick={handleEndTurn}
-              disabled={loading}
-              style={{
-                width: "100%",
-                padding: "12px",
-                fontSize: "14px",
-                cursor: loading ? "not-allowed" : "pointer",
-                background: "#2196f3",
-                color: "white",
-                border: "none",
-                borderRadius: "4px",
-              }}
-            >
-              End Turn
+              Roll Dice
             </button>
           </>
         )}
@@ -210,20 +199,7 @@ export default function Game() {
                 Card: {diceRoll.drawnCardDescription}
               </div>
             )}
-            <button
-              onClick={handleEndTurn}
-              style={{
-                width: "100%",
-                padding: "8px",
-                cursor: "pointer",
-                background: "#2196f3",
-                color: "white",
-                border: "none",
-                borderRadius: "4px",
-              }}
-            >
-              Continue
-            </button>
+
           </div>
         )}
 
@@ -293,109 +269,40 @@ export default function Game() {
         )}
       </div>
 
-      <div className="table">
-        <div className="board">
-          <div className="center">
-            <div className="community-chest-deck">
-              <h2 className="label">Community Chest</h2>
-              <div className="deck" />
-            </div>
-            <h1 className="title">MONOPOLY</h1>
-            <div className="chance-deck">
-              <h2 className="label">Chance</h2>
-              <div className="deck" />
-            </div>
-          </div>
-          {tilesLoading ? (
-            <div
-              style={{
-                gridColumn: "1 / -1",
-                textAlign: "center",
-                padding: "40px",
-              }}
-            >
-              Loading board...
-            </div>
-          ) : (
-            tiles &&
-            tiles.map((tile: any) => {
-              const pos = tilePositions.get(tile.index);
-              if (!pos) return null;
-
-              const baseClass = `space ${
-                tile.type === "StartTile"
-                  ? "corner go"
-                  : tile.type === "JailTile"
-                    ? "corner jail"
-                    : tile.type === "FreeParkingTile"
-                      ? "corner free-parking"
-                      : tile.type === "GoToJailTile"
-                        ? "corner go-to-jail"
-                        : tile.type === "RailroadTile"
-                          ? "railroad"
-                          : tile.type === "UtilityTile"
-                            ? "utility"
-                            : tile.type === "TaxTile"
-                              ? "fee"
-                              : tile.type === "DrawChance"
-                                ? "chance"
-                                : tile.type === "DrawCommunity"
-                                  ? "community-chest"
-                                  : "property"
-              }`;
-
-              const colorMap: Record<string, string> = {
-                Brown: "dark-purple",
-                LightBlue: "light-blue",
-                Pink: "purple",
-                Orange: "orange",
-                Red: "red",
-                Yellow: "yellow",
-                Green: "green",
-                DarkBlue: "dark-blue",
-              };
-              const colorClass = (tile.color && colorMap[tile.color]) || "";
-
-              return (
-                <div
-                  key={tile.index}
-                  className={`${baseClass} ${colorClass}`}
-                  style={{
-                    gridColumn: pos.gridColumn,
-                    gridRow: pos.gridRow,
-                  }}
-                >
-                  <div className="container">
-                    {tile.color && <div className="color-bar" />}
-                    <div className="name" style={{ fontSize: "10px" }}>
-                      {tile.city || tile.type}
-                    </div>
-                    {tile.price && (
-                      <div className="price">Price ${tile.price}</div>
-                    )}
-                    {tile.owner && (
-                      <div
-                        style={{
-                          fontSize: "9px",
-                          color: "#666",
-                          marginTop: "2px",
-                        }}
-                      >
-                        Owned: {tile.owner}
-                      </div>
-                    )}
-                    {(tile.houses || tile.hasHotel) && (
-                      <div style={{ fontSize: "9px", color: "#d32f2f" }}>
-                        {tile.hasHotel ? "🏨" : `${tile.houses}🏠`}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
+   <div
+  style={{
+    display: "grid",
+    position: "absolute",
+    top: "55%",
+    left: "40%",
+    transform: "translate(-50%, -50%)",
+    gridTemplateColumns: `repeat(${boardSize}, 1fr)`,
+    gridTemplateRows: `repeat(${boardSize}, 1fr)`,
+    width: "400x",
+    height: "400px",
+  }}
+>
+  {board.map((row, y) =>
+    row.map((tile, x) => (
+      <div
+        key={`${x}-${y}`}
+        style={{
+          border: "1px solid #ffffff",
+          fontSize: "12px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {tile ? (
+          <Tiles {...tile} />
+        ) : (
+          <div style={{ opacity: 0.2 }}>.</div>
+        )}
       </div>
+    ))
+  )}
+</div>
     </>
   );
 }

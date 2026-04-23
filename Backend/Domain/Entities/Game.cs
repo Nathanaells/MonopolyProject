@@ -1,9 +1,10 @@
 namespace Backend.Domain.Entities;
 
+using Backend.Domain.DTOs;
 using Backend.Domain.Enums;
 using Backend.Domain.Interfaces;
 
-class Game
+public class Game
 {
     private const int StartBonus = 200;
     private IBoard _board;
@@ -30,6 +31,7 @@ class Game
     public List<ICard> Cards => _cards;
     public List<IPiece> Pieces => _pieces;
     public bool GameEnded => _gameEnded;
+    public GamePhase Phase { get; private set; } = GamePhase.WaitingRoll;
 
     public Game(
         IBoard board,
@@ -84,7 +86,7 @@ class Game
         }
     }
 
-    public void Playturn()
+    public void NextPlayer()
     {
         if (_gameEnded)
         {
@@ -99,6 +101,65 @@ class Game
         );
     }
 
+    public RollTurnResult RollTurn()
+    {
+        if (Phase != GamePhase.WaitingRoll)
+            throw new Exception("Not the right phase to roll the dice.");
+
+        IPlayer player = CurrentPlayer;
+
+        if (CheckPlayerJailStatus(player))
+        {
+            IDice dice1 = new Dice();
+            IDice dice2 = new Dice();
+
+            if (dice1.MaxRolled == dice2.MaxRolled)
+            {
+                ReleaseFromJail(player);
+                NextPlayer();
+                MovePiece(player, dice1.MaxRolled + dice2.MaxRolled);
+            }
+            else
+            {
+                if (!GameEnded)
+                    NextPlayer();
+            }
+        }
+
+        if (CheckBankruptcy(player))
+        {
+            RemovePlayer(player);
+            if (!GameEnded)
+                NextPlayer();
+            return new RollTurnResult(0, null, false, null);
+        }
+
+        int diceTotal = HandleDiceRoll();
+
+        MovePiece(player, diceTotal);
+
+        var landedTile = GetCurrentTile(player);
+        ICard? card = null;
+
+        if (isPropertyAvailable(landedTile))
+        {
+            int price = landedTile.Asset?.Price.Value ?? 0;
+            int balance = GetPlayerBalance(player);
+
+            if (balance >= price)
+                Phase = GamePhase.WaitingBuyDecision;
+            return new RollTurnResult(diceTotal, landedTile, true, null);
+        }
+
+        EndGame();
+        if (!GameEnded)
+            NextPlayer();
+
+        Phase = GamePhase.WaitingRoll;
+
+        return new RollTurnResult(diceTotal, landedTile, false, card);
+    }
+
     public void MovePiece(IPlayer player, int? step = null, int doubleRollCount = 0)
     {
         if (player == null)
@@ -110,7 +171,7 @@ class Game
             return;
         }
 
-        int move = step ?? HandleDiceRoll(new Dice(), new Dice());
+        int move = step ?? HandleDiceRoll();
 
         var currentTile = GetCurrentTile(player);
 
@@ -223,16 +284,22 @@ class Game
         player.IsInJail = false;
     }
 
-    public int HandleDiceRoll(IDice dice1, IDice dice2)
+    public int HandleDiceRoll(IDice? die1 = null, IDice? die2 = null)
     {
-        int roll = dice1.Roll() + dice2.Roll();
+        IDice dice1 = die1 ?? new Dice();
+        IDice dice2 = die2 ?? new Dice();
+
+        var Player = CurrentPlayer;
+
+        if (dice1.MaxRolled == dice2.MaxRolled)
+        {
+            Player.DoubleRoll++;
+        }
+
+        int roll = dice1.MaxRolled + dice2.MaxRolled;
         return roll;
     }
 
-    // FIX: CheckDoubleDice dihapus karena logikanya dipindahkan ke MovePiece
-
-    // FIX: CheckBankruptcy hanya dipakai sebagai pengecekan status, tidak invoke event
-    // Event PlayerBankrupt hanya di-invoke di SubstractPlayerMoney
     public bool CheckBankruptcy(IPlayer player)
     {
         return player.IsBankrupt;
@@ -398,6 +465,20 @@ class Game
             }
         }
         return totalCost;
+    }
+
+    public void HandleBuyDecision(bool wantsToBuy)
+    {
+        if (Phase != GamePhase.WaitingBuyDecision)
+            throw new Exception("Not the right phase to handle buy decision.");
+
+        AttemptBuyCurrentProperty(CurrentPlayer, wantsToBuy);
+
+        EndGame();
+        if (!GameEnded)
+            NextPlayer();
+
+        Phase = GamePhase.WaitingRoll;
     }
 
     public List<ITile> GetPlayerProperties(IPlayer player)
@@ -571,9 +652,15 @@ class Game
             throw new Exception("Card or player cannot be null.");
 
         if (card is CommunityCard)
+        {
             ExecuteCommunityCard(card, player);
+            NextPlayer();
+        }
         else if (card is ChanceCard)
+        {
             ExecuteChanceCard(card, player);
+            NextPlayer();
+        }
     }
 
     private void ExecuteCommunityCard(ICard card, IPlayer player)
@@ -820,7 +907,11 @@ class Game
         if (tile.Type == TileType.DrawChance || tile.Type == TileType.DrawCommunity)
         {
             drawnCard = DrawCard(tile.Type);
+            Console.WriteLine(
+                $"Player {player.Name} drew card: {drawnCard.Description} with behaviour {drawnCard.Behaviour}"
+            );
             ExecuteCard(drawnCard, player);
+            NextPlayer();
             return true;
         }
 
@@ -848,6 +939,7 @@ class Game
         {
             _gameEnded = true;
         }
+
         return isGameEnded;
     }
 }
