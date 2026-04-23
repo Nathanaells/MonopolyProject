@@ -28,7 +28,6 @@ public enum PropertyCity
     StatesAvenue,
     VirginiaAvenue,
 
-    // Orange
     StJamesPlace,
     TennesseeAvenue,
     NewYorkAvenue,
@@ -45,13 +44,11 @@ public enum PropertyCity
     ParkPlace,
     Boardwalk,
 
-    // Railroads
     ReadingRailroad,
     PennsylvaniaRailroad,
     BORailroad,
     ShortLineRailroad,
 
-    //Utilities
     ElectricCompany,
     WaterWorks,
 }
@@ -82,7 +79,6 @@ public enum PieceType
 
 public enum CardBehaviour
 {
-    //ChanceCards
     AdvanceToGo,
     AdvanceToIllinois,
     AdvanceToStCharles,
@@ -100,8 +96,6 @@ public enum CardBehaviour
     ChairmanOfTheBoard,
     YourBuildingLoanMatures,
 
-    //CommunityChestCards
-
     BankError,
     DoctorFees,
     FromSaleOfStock,
@@ -116,4 +110,12 @@ public enum CardBehaviour
     StreetRepairs,
     BeautyContestPrize,
     InheritMoney,
+}
+
+
+public enum JailRollResult
+{
+    None,
+    Released,
+    StayedInJail,
 }

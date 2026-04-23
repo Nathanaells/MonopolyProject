@@ -1,5 +1,3 @@
-
-
 export interface GameState {
   isGameEnded: boolean;
   winner?: string;
@@ -13,6 +11,7 @@ export interface PlayerState {
   isInJail: boolean;
   isBankrupt: boolean;
   properties: string[];
+  currentTileIndex?: number;
 }
 
 export interface TilePosition {
@@ -23,10 +22,13 @@ export interface TilePosition {
 
 export interface RollResult {
   diceTotal: number;
+  dice1: number;
+  dice2: number;
   landedTileType: string;
   landedProperty?: string;
   requiresBuyDecision: boolean;
   drawnCardDescription?: string;
+  jailRollResult: "None" | "Released" | "StayedInJail";
   state: GameState;
 }
 
@@ -36,13 +38,23 @@ export type TileData = {
   position: {
     x: number;
     y: number;
-  },
+  };
   asset?: {
-    price: number,
-    color: string,
-    city: string
-  },
-  owner?: string,
-  houses?: number,
-  hasHotel?: boolean
+    price: number;
+    color: string;
+    city: string;
+  };
+  owner?: string;
+  houses?: number;
+  hasHotel?: boolean;
+};
+
+export interface PieceData {
+  pieceType: string;
+  isAvailable: boolean;
+}
+
+export interface SellResult {
+  income: number;
+  gameState: GameState;
 }

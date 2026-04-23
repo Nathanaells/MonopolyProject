@@ -1,0 +1,94 @@
+// usePieceAnimation.ts
+// Tracks piece positions and animates them step-by-step across the board.
+// Usage: call `animateMove(playerName, fromTileIndex, toTileIndex, tiles)` 
+// and it returns the current animated tile index per player.
+
+import { useState, useRef, useCallback } from "react";
+
+export interface AnimationState {
+  // playerName → currently displayed tile index (for rendering the piece)
+  positions: Record<string, number>;
+  isAnimating: boolean;
+}
+
+const STEP_DELAY_MS = 180; // ms between each tile step
+
+export function usePieceAnimation(initialPositions: Record<string, number> = {}) {
+  const [state, setState] = useState<AnimationState>({
+    positions: initialPositions,
+    isAnimating: false,
+  });
+  const animatingRef = useRef(false);
+
+  /**
+   * Animate a piece from `from` to `to` (board wraps at `totalTiles`).
+   * Returns a promise that resolves when animation is done.
+   */
+  const animateMove = useCallback(
+    (
+      playerName: string,
+      from: number,
+      to: number,
+      totalTiles: number,
+      onComplete?: () => void
+    ): Promise<void> => {
+      return new Promise((resolve) => {
+        animatingRef.current = true;
+        setState((s) => ({ ...s, isAnimating: true }));
+
+        // Build the path of tile indices
+        const steps: number[] = [];
+        let cur = from;
+        while (cur !== to) {
+          cur = (cur + 1) % totalTiles;
+          steps.push(cur);
+        }
+
+        if (steps.length === 0) {
+          animatingRef.current = false;
+          setState((s) => ({ ...s, isAnimating: false }));
+          onComplete?.();
+          resolve();
+          return;
+        }
+
+        let stepIndex = 0;
+        const tick = setInterval(() => {
+          const tileIdx = steps[stepIndex];
+          setState((s) => ({
+            ...s,
+            positions: { ...s.positions, [playerName]: tileIdx },
+          }));
+          stepIndex++;
+          if (stepIndex >= steps.length) {
+            clearInterval(tick);
+            animatingRef.current = false;
+            setState((s) => ({ ...s, isAnimating: false }));
+            onComplete?.();
+            resolve();
+          }
+        }, STEP_DELAY_MS);
+      });
+    },
+    []
+  );
+
+  const setPosition = useCallback((playerName: string, tileIndex: number) => {
+    setState((s) => ({
+      ...s,
+      positions: { ...s.positions, [playerName]: tileIndex },
+    }));
+  }, []);
+
+  const setAllPositions = useCallback((positions: Record<string, number>) => {
+    setState((s) => ({ ...s, positions }));
+  }, []);
+
+  return {
+    positions: state.positions,
+    isAnimating: state.isAnimating,
+    animateMove,
+    setPosition,
+    setAllPositions,
+  };
+}

@@ -17,7 +17,8 @@ public static class GameStateMapper
                     .Select(t => t.Asset?.City.PropertyCity.ToString())
                     .Where(x => x != null)
                     .Cast<string>()
-                    .ToList()
+                    .ToList(),
+                Array.IndexOf(game.Board.Tiles, game.GetCurrentTile(p))
             ))
             .ToList();
 

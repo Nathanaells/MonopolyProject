@@ -14,11 +14,12 @@ public class Game
 
     private List<ICard> _cards;
     private List<IPiece> _pieces;
-
     private List<IMoney> _money;
 
     private Dictionary<IPlayer, IPiece> _playerPiece;
     private Dictionary<IPlayer, List<IMoney>> _playerData;
+    private Dictionary<PieceType, IPlayer> _takenPieces = new();
+
     private readonly Random _random = new();
 
     public event Action<IPlayer, IPiece>? PlayerSentToJail;
@@ -38,8 +39,7 @@ public class Game
         List<IPlayer> players,
         List<IPiece> pieces,
         List<ICard> cards,
-        List<IMoney> money
-    )
+        List<IMoney> money)
     {
         _board = board;
         _players = players;
@@ -64,41 +64,64 @@ public class Game
 
     public IBoard Board => _board;
 
-    public List<IMoney> GetMoney()
+    public List<IMoney> GetMoney() => _money;
+
+    public bool IsPieceAvailable(PieceType pieceType)
     {
-        return _money;
+        return !_takenPieces.ContainsKey(pieceType);
     }
 
-    public IPiece GetPiece(IPlayer player)
+    public void AssignPieceToPlayer(IPlayer player, PieceType pieceType)
     {
-        if (player == null)
-        {
-            throw new Exception("Player cannot be null.");
-        }
+        if (player == null) throw new Exception("Player cannot be null.");
+        if (!_players.Contains(player)) throw new Exception("Player not found in this game.");
 
-        if (_playerPiece.ContainsKey(player))
-        {
-            return _playerPiece[player];
-        }
-        else
-        {
-            throw new Exception("Player does not have a piece assigned.");
-        }
-    }
-
-    public void NextPlayer()
-    {
-        if (_gameEnded)
+        if (_playerPiece.TryGetValue(player, out var currentPiece) && currentPiece.Type == pieceType)
         {
             return;
         }
 
+        if (!IsPieceAvailable(pieceType))
+            throw new Exception($"Piece {pieceType} sudah diambil oleh pemain lain.");
+
+        var newPiece = _pieces.FirstOrDefault(p => p.Type == pieceType)
+            ?? throw new Exception($"Piece {pieceType} tidak ditemukan.");
+
+        if (_playerPiece.TryGetValue(player, out var oldPiece))
+        {
+            var currentTile = _board.Tiles.FirstOrDefault(t => t.Pieces.Contains(oldPiece));
+            currentTile?.Pieces.Remove(oldPiece);
+
+            var oldTakenEntry = _takenPieces.FirstOrDefault(kv => kv.Value.Equals(player));
+            if (!oldTakenEntry.Equals(default(KeyValuePair<PieceType, IPlayer>)))
+            {
+                _takenPieces.Remove(oldTakenEntry.Key);
+            }
+        }
+
+        _playerPiece[player] = newPiece;
+        _takenPieces[newPiece.Type] = player;
+
+        var startTile = GetTileByType(TileType.StartTile);
+        if (!_board.Tiles.Any(t => t.Pieces.Contains(newPiece)))
+            startTile.Pieces.Add(newPiece);
+    }
+
+    public IPiece GetPiece(IPlayer player)
+    {
+        if (player == null) throw new Exception("Player cannot be null.");
+        if (_playerPiece.ContainsKey(player)) return _playerPiece[player];
+        throw new Exception("Player does not have a piece assigned.");
+    }
+
+    public void NextPlayer()
+    {
+        if (_gameEnded) return;
+
         do
         {
             _currentPlayerIndex = (_currentPlayerIndex + 1) % _players.Count;
-        } while (
-            _players[_currentPlayerIndex].IsBankrupt && _players.Count(p => !p.IsBankrupt) > 1
-        );
+        } while (_players[_currentPlayerIndex].IsBankrupt && _players.Count(p => !p.IsBankrupt) > 1);
     }
 
     public RollTurnResult RollTurn()
@@ -108,62 +131,183 @@ public class Game
 
         IPlayer player = CurrentPlayer;
 
-        if (CheckPlayerJailStatus(player))
+        if (player.IsInJail)
         {
-            IDice dice1 = new Dice();
-            IDice dice2 = new Dice();
+            var jailDice1 = new Dice();
+            var jailDice2 = new Dice();
+            int d1 = jailDice1.MaxRolled;
+            int d2 = jailDice2.MaxRolled;
 
-            if (dice1.MaxRolled == dice2.MaxRolled)
+            if (d1 == d2)
             {
                 ReleaseFromJail(player);
-                NextPlayer();
-                MovePiece(player, dice1.MaxRolled + dice2.MaxRolled);
+                MovePiece(player, d1 + d2);
+                var landedTileJail = GetCurrentTile(player);
+
+                HandleTileEffectsAfterMove(player, landedTileJail, out ICard? jailCard,
+                    out bool requiresBuyJail);
+
+                if (!requiresBuyJail)
+                {
+                    EndGame();
+                    if (!GameEnded) NextPlayer();
+                    Phase = GamePhase.WaitingRoll;
+                }
+                else
+                {
+                    Phase = GamePhase.WaitingBuyDecision;
+                }
+
+                return new RollTurnResult(
+                    DiceTotal: d1 + d2,
+                    Dice1: d1,
+                    Dice2: d2,
+                    LandedTileType: landedTileJail.Type.ToString(),
+                    LandedProperty: landedTileJail.Asset != null ? landedTileJail : null,
+                    LandedTile: landedTileJail,
+                    RequiresBuyDecision: requiresBuyJail,
+                    DrawnCard: jailCard,
+                    JailRollResult: JailRollResult.Released
+                );
+
             }
             else
             {
-                if (!GameEnded)
-                    NextPlayer();
+                player.JailTurnsRemaining--;
+
+                if (player.JailTurnsRemaining <= 0)
+                {
+                    if (GetPlayerBalance(player) >= 50)
+                        SubstractPlayerMoney(player, new Money(50));
+                    ReleaseFromJail(player);
+                }
+
+                EndGame();
+                if (!GameEnded) NextPlayer();
+                Phase = GamePhase.WaitingRoll;
+
+                return new RollTurnResult(
+                    DiceTotal: d1 + d2,
+                    Dice1: d1,
+                    Dice2: d2,
+                    LandedTileType: "None",
+                    LandedProperty: null,
+                    LandedTile: null,
+                    RequiresBuyDecision: false,
+                    DrawnCard: null,
+                    JailRollResult: JailRollResult.StayedInJail
+                );
             }
         }
 
         if (CheckBankruptcy(player))
         {
             RemovePlayer(player);
-            if (!GameEnded)
-                NextPlayer();
-            return new RollTurnResult(0, null, false, null);
+            if (!GameEnded) NextPlayer();
+            return new RollTurnResult(
+                DiceTotal: 0,
+                Dice1: 0,
+                Dice2: 0,
+                LandedTileType: "None",
+                LandedProperty: null,
+                LandedTile: null,
+                RequiresBuyDecision: false,
+                DrawnCard: null,
+                JailRollResult: JailRollResult.None
+            );
         }
 
-        int diceTotal = HandleDiceRoll();
+        var dice1 = new Dice();
+        var dice2 = new Dice();
+        int roll1 = dice1.MaxRolled;
+        int roll2 = dice2.MaxRolled;
+        int diceTotal = roll1 + roll2;
+
+        if (roll1 == roll2) player.DoubleRoll++;
+        if (player.DoubleRoll >= 3)
+        {
+            player.DoubleRoll = 0;
+            SendPieceToJail(player);
+            EndGame();
+            if (!GameEnded) NextPlayer();
+            Phase = GamePhase.WaitingRoll;
+            return new RollTurnResult(
+                DiceTotal: diceTotal,
+                Dice1: roll1,
+                Dice2: roll2,
+                LandedTileType: "None",
+                LandedProperty: null,
+                LandedTile: null,
+                RequiresBuyDecision: false,
+                DrawnCard: null,
+                JailRollResult: JailRollResult.None
+            );
+        }
 
         MovePiece(player, diceTotal);
 
         var landedTile = GetCurrentTile(player);
-        ICard? card = null;
 
-        if (isPropertyAvailable(landedTile))
+        HandleTileEffectsAfterMove(player, landedTile, out ICard? card, out bool requiresBuyDecision);
+
+        if (requiresBuyDecision)
         {
-            int price = landedTile.Asset?.Price.Value ?? 0;
-            int balance = GetPlayerBalance(player);
-
-            if (balance >= price)
-                Phase = GamePhase.WaitingBuyDecision;
-            return new RollTurnResult(diceTotal, landedTile, true, null);
+            Phase = GamePhase.WaitingBuyDecision;
+            return new RollTurnResult(
+                DiceTotal: diceTotal,
+                Dice1: roll1,
+                Dice2: roll2,
+                LandedTileType: landedTile.Type.ToString(),
+                LandedProperty: landedTile.Asset != null ? landedTile : null,
+                LandedTile: landedTile,
+                RequiresBuyDecision: true,
+                DrawnCard: null,
+                JailRollResult: JailRollResult.None
+            );
         }
 
         EndGame();
-        if (!GameEnded)
-            NextPlayer();
-
+        if (!GameEnded) NextPlayer();
         Phase = GamePhase.WaitingRoll;
 
-        return new RollTurnResult(diceTotal, landedTile, false, card);
+        return new RollTurnResult(
+            DiceTotal: diceTotal,
+            Dice1: roll1,
+            Dice2: roll2,
+            LandedTileType: landedTile.Type.ToString(),
+            LandedProperty: landedTile.Asset != null ? landedTile : null,
+            LandedTile: landedTile,
+            RequiresBuyDecision: false,
+            DrawnCard: card,
+            JailRollResult: JailRollResult.None
+        );
+    }
+
+    private void HandleTileEffectsAfterMove(
+        IPlayer player,
+        ITile tile,
+        out ICard? drawnCard,
+        out bool requiresBuyDecision)
+    {
+        drawnCard = null;
+        requiresBuyDecision = false;
+
+        if (isPropertyAvailable(tile))
+        {
+            int price = tile.Asset?.Price.Value ?? 0;
+            if (GetPlayerBalance(player) >= price)
+            {
+                requiresBuyDecision = true;
+                return;
+            }
+        }
+
+        drawnCard = ExecuteTile(tile, player);
     }
 
     public void MovePiece(IPlayer player, int? step = null, int doubleRollCount = 0)
     {
-        if (player == null)
-            throw new Exception("Player cannot be null.");
+        if (player == null) throw new Exception("Player cannot be null.");
 
         if (doubleRollCount >= 3)
         {
@@ -172,18 +316,13 @@ public class Game
         }
 
         int move = step ?? HandleDiceRoll();
-
         var currentTile = GetCurrentTile(player);
-
         int currentIndex = Array.IndexOf(_board.Tiles, currentTile);
-
         int count = _board.Tiles.Length;
         int newIndex = ((currentIndex + move) % count + count) % count;
 
         if (move > 0 && newIndex < currentIndex)
-        {
             AddPlayerMoney(player, new Money(StartBonus));
-        }
 
         MovePieceToIndex(player, newIndex);
     }
@@ -191,7 +330,6 @@ public class Game
     private void MovePieceTo(IPlayer player, ITile targetTile)
     {
         var currentTile = GetCurrentTile(player);
-
         currentTile.Pieces.Remove(_playerPiece[player]);
         targetTile.Pieces.Add(_playerPiece[player]);
     }
@@ -205,11 +343,9 @@ public class Game
     {
         int currentIndex = Array.IndexOf(_board.Tiles, GetCurrentTile(player));
         int count = _board.Tiles.Length;
-
         for (int i = 1; i <= count; i++)
         {
             int index = (currentIndex + i) % count;
-
             if (_board.Tiles[index] is ITile tile && tile.Type == TileType.UtilityTile)
             {
                 MovePieceTo(player, _board.Tiles[index]);
@@ -222,11 +358,9 @@ public class Game
     {
         int currentIndex = Array.IndexOf(_board.Tiles, GetCurrentTile(player));
         int count = _board.Tiles.Length;
-
         for (int i = 1; i <= count; i++)
         {
             int index = (currentIndex + i) % count;
-
             if (_board.Tiles[index] is ITile tile && tile.Type == TileType.RailroadTile)
             {
                 MovePieceTo(player, _board.Tiles[index]);
@@ -235,35 +369,30 @@ public class Game
         }
     }
 
-    private ITile GetTileByType(TileType type)
-    {
-        return _board.Tiles.First(t => t.Type == type);
-    }
+    private ITile GetTileByType(TileType type) =>
+        _board.Tiles.First(t => t.Type == type);
 
     public ITile GetCurrentTile(IPlayer player)
     {
-        return _board.Tiles.First(t => t.Pieces.Contains(_playerPiece[player]));
+        if (player == null) throw new Exception("Player cannot be null.");
+        if (!_playerPiece.TryGetValue(player, out var piece))
+            throw new Exception("Player does not have a piece assigned.");
+
+        var tile = _board.Tiles.FirstOrDefault(t => t.Pieces.Contains(piece));
+        if (tile != null) return tile;
+
+        var startTile = GetTileByType(TileType.StartTile);
+        if (!startTile.Pieces.Contains(piece))
+            startTile.Pieces.Add(piece);
+
+        return startTile;
     }
 
-    private ITile GetTileByOwner(IPlayer owner)
-    {
-        return _board.Tiles.First(t => t.Owner != null && t.Owner.Equals(owner));
-    }
+    private ITile GetTileByPropertyCity(PropertyCity city) =>
+        _board.Tiles.First(t => t.Asset != null && t.Asset.City.PropertyCity == city);
 
-    private ITile GetTileByPlayer(IPlayer player)
-    {
-        return _board.Tiles.First(t => t.Pieces.Contains(_playerPiece[player]));
-    }
-
-    private ITile GetTileByPropertyCity(PropertyCity city)
-    {
-        return _board.Tiles.First(t => t.Asset != null && t.Asset.City.PropertyCity == city);
-    }
-
-    public ITile GetTileByCity(PropertyCity city)
-    {
-        return GetTileByPropertyCity(city);
-    }
+    public ITile GetTileByCity(PropertyCity city) =>
+        GetTileByPropertyCity(city);
 
     public void SendPieceToJail(IPlayer player)
     {
@@ -273,6 +402,7 @@ public class Game
         var jailTile = GetTileByType(TileType.JailTile);
         jailTile.Pieces.Add(_playerPiece[player]);
         player.IsInJail = true;
+        player.JailTurnsRemaining = 3;
 
         PlayerSentToJail?.Invoke(player, _playerPiece[player]);
     }
@@ -282,51 +412,30 @@ public class Game
         var jailTile = GetTileByType(TileType.JailTile);
         jailTile.Pieces.Remove(_playerPiece[player]);
         player.IsInJail = false;
+        player.JailTurnsRemaining = 0;
     }
 
     public int HandleDiceRoll(IDice? die1 = null, IDice? die2 = null)
     {
         IDice dice1 = die1 ?? new Dice();
         IDice dice2 = die2 ?? new Dice();
-
-        var Player = CurrentPlayer;
-
-        if (dice1.MaxRolled == dice2.MaxRolled)
-        {
-            Player.DoubleRoll++;
-        }
-
-        int roll = dice1.MaxRolled + dice2.MaxRolled;
-        return roll;
+        if (dice1.MaxRolled == dice2.MaxRolled) CurrentPlayer.DoubleRoll++;
+        return dice1.MaxRolled + dice2.MaxRolled;
     }
 
-    public bool CheckBankruptcy(IPlayer player)
-    {
-        return player.IsBankrupt;
-    }
+    public bool CheckBankruptcy(IPlayer player) => player.IsBankrupt;
 
     public bool CheckPlayerJailStatus(IPlayer player)
     {
-        if (player == null)
-        {
-            throw new Exception("Player cannot be null.");
-        }
-
+        if (player == null) throw new Exception("Player cannot be null.");
         return player.IsInJail;
     }
 
-    private bool IsOnOwnedProperty(ITile tile)
-    {
-        return tile.Owner != null;
-    }
+    private bool IsOnOwnedProperty(ITile tile) => tile.Owner != null;
 
     public void RemovePlayer(IPlayer player)
     {
-        if (player == null)
-        {
-            throw new Exception("Player cannot be null.");
-        }
-
+        if (player == null) throw new Exception("Player cannot be null.");
         _players.Remove(player);
         _playerPiece.Remove(player);
         _playerData.Remove(player);
@@ -334,12 +443,8 @@ public class Game
 
     public void SubstractPlayerMoney(IPlayer player, IMoney money)
     {
-        if (player == null)
-            throw new Exception("Player cannot be null.");
-
-        if (money == null)
-            throw new Exception("Money cannot be null.");
-
+        if (player == null) throw new Exception("Player cannot be null.");
+        if (money == null) throw new Exception("Money cannot be null.");
         if (!_playerData.ContainsKey(player) || _playerData[player] == null)
             throw new Exception("Player data cannot be null.");
 
@@ -347,30 +452,21 @@ public class Game
         if (currentMoney < money.Value)
         {
             player.IsBankrupt = true;
-            // FIX: PlayerBankrupt hanya di-invoke di satu tempat ini
             PlayerBankrupt?.Invoke(player);
             throw new Exception("Not enough money.");
         }
-
         _playerData[player].Add(new Money(-money.Value));
     }
 
     public void TransferPlayerMoney(IPlayer from, IPlayer to, IMoney money)
     {
-        if (from == null || to == null)
-            throw new Exception("Players cannot be null.");
-
-        if (money == null)
-            throw new Exception("Money cannot be null.");
-
+        if (from == null || to == null) throw new Exception("Players cannot be null.");
+        if (money == null) throw new Exception("Money cannot be null.");
         if (!_playerData.ContainsKey(from) || !_playerData.ContainsKey(to))
             throw new Exception("Player data cannot be null.");
 
         int fromMoney = _playerData[from].Sum(m => m.Value);
-        if (fromMoney < money.Value)
-        {
-            throw new Exception("Not enough money to transfer.");
-        }
+        if (fromMoney < money.Value) throw new Exception("Not enough money to transfer.");
 
         _playerData[from].Add(new Money(-money.Value));
         _playerData[to].Add(new Money(money.Value));
@@ -378,12 +474,8 @@ public class Game
 
     public void AddPlayerMoney(IPlayer player, IMoney money)
     {
-        if (player == null)
-            throw new Exception("Player cannot be null.");
-
-        if (money == null)
-            throw new Exception("Money cannot be null.");
-
+        if (player == null) throw new Exception("Player cannot be null.");
+        if (money == null) throw new Exception("Money cannot be null.");
         if (!_playerData.ContainsKey(player) || _playerData[player] == null)
             throw new Exception("Player data cannot be null.");
 
@@ -392,35 +484,24 @@ public class Game
 
     public int GetPlayerBalance(IPlayer player)
     {
-        if (!_playerData.ContainsKey(player))
-            throw new Exception("Player data cannot be null.");
-
+        if (!_playerData.ContainsKey(player)) throw new Exception("Player data cannot be null.");
         return _playerData[player].Sum(m => m.Value);
     }
 
     public IPiece GetPieceLocation(IPlayer player)
     {
-        var PlayerData = GetTileByPlayer(player);
-        return PlayerData.Pieces.First(p => p == _playerPiece[player]);
+        var playerData = GetCurrentTile(player);
+        return playerData.Pieces.First(p => p == _playerPiece[player]);
     }
 
     public void BuyProperty(IPlayer player)
     {
         var tile = GetCurrentTile(player);
-
-        if (
-            _playerData.ContainsKey(player)
-            && _playerData[player] != null
-            && tile.Asset?.Price != null
-        )
+        if (_playerData.ContainsKey(player) && _playerData[player] != null && tile.Asset?.Price != null)
         {
             int moneyData = _playerData[player].Sum(m => m.Value);
             int propertyPrice = tile.Asset.Price.Value;
-
-            if (moneyData < propertyPrice)
-            {
-                throw new Exception("Not enough money to buy the property.");
-            }
+            if (moneyData < propertyPrice) throw new Exception("Not enough money to buy the property.");
 
             _playerData[player].Add(new Money(-propertyPrice));
             tile.Owner = player;
@@ -433,38 +514,14 @@ public class Game
 
     public bool AttemptBuyCurrentProperty(IPlayer player, bool wantsToBuy)
     {
-        if (!wantsToBuy)
-            return false;
-
+        if (!wantsToBuy) return false;
         var tile = GetCurrentTile(player);
-        if (!isPropertyAvailable(tile))
-            return false;
-
+        if (!isPropertyAvailable(tile)) return false;
         int price = tile.Asset!.Price.Value;
-        if (GetPlayerBalance(player) < price)
-            return false;
-
+        if (GetPlayerBalance(player) < price) return false;
         SubstractPlayerMoney(player, new Money(price));
         tile.Owner = player;
         return true;
-    }
-
-    private int HandleStreetRepairs(IPlayer player)
-    {
-        int houseCost = 40;
-        int hotelCost = 115;
-
-        int totalCost = 0;
-
-        foreach (var tile in _board.Tiles)
-        {
-            if (tile.Owner != null && tile.Owner.Equals(player) && tile.Asset != null)
-            {
-                totalCost += (tile.House ?? 0) * houseCost;
-                totalCost = tile.HasHotel == true ? totalCost + hotelCost : totalCost;
-            }
-        }
-        return totalCost;
     }
 
     public void HandleBuyDecision(bool wantsToBuy)
@@ -475,37 +532,92 @@ public class Game
         AttemptBuyCurrentProperty(CurrentPlayer, wantsToBuy);
 
         EndGame();
-        if (!GameEnded)
-            NextPlayer();
-
+        if (!GameEnded) NextPlayer();
         Phase = GamePhase.WaitingRoll;
     }
 
-    public List<ITile> GetPlayerProperties(IPlayer player)
+    public void BuyBuilding(IPlayer player, PropertyCity city, bool buildHotel)
     {
-        return _board.Tiles.Where(t => t.Owner != null && t.Owner.Equals(player)).ToList();
+        var tile = GetTileByCity(city);
+
+        if (tile.Asset == null)
+            throw new Exception("This tile has no asset.");
+
+        if (tile.Owner == null || !tile.Owner.Equals(player))
+            throw new Exception("You do not own this property.");
+
+        var color = tile.Asset.Color;
+        if (color == null)
+            throw new Exception("This property cannot have buildings (no color).");
+
+        var sameColorTiles = _board.Tiles
+            .Where(t => t.Asset?.Color == color)
+            .ToList();
+
+        bool hasMonopoly = sameColorTiles.All(t => t.Owner != null && t.Owner.Equals(player));
+        if (!hasMonopoly)
+            throw new Exception("Kamu harus memiliki semua properti warna yang sama terlebih dahulu.");
+
+        int housePrice = GetHousePrice(tile.Asset);
+        int currentHouses = tile.House ?? 0;
+        bool hasHotel = tile.HasHotel ?? false;
+
+        if (hasHotel)
+            throw new Exception("Tile sudah memiliki hotel.");
+
+        if (buildHotel)
+        {
+            if (currentHouses < 3)
+                throw new Exception("Butuh minimal 3 rumah sebelum bisa bangun hotel.");
+
+            int hotelPrice = housePrice * 5;
+            SubstractPlayerMoney(player, new Money(hotelPrice));
+            tile.House = 0;
+            tile.HasHotel = true;
+        }
+        else
+        {
+            if (currentHouses >= 3)
+                throw new Exception("Sudah 3 rumah. Bangun hotel sekarang.");
+
+            SubstractPlayerMoney(player, new Money(housePrice));
+            tile.House = currentHouses + 1;
+        }
+    }
+
+    public int SellAllAssetsToBank(IPlayer player)
+    {
+        var properties = GetPlayerProperties(player).ToList();
+        int totalIncome = 0;
+
+        foreach (var tile in properties)
+        {
+            if (tile.Asset == null) continue;
+
+            int income = SellPropertyToBank(
+                player,
+                tile.Asset.City.PropertyCity,
+                includeBuildings: true);
+
+            totalIncome += income;
+        }
+
+        return totalIncome;
     }
 
     public void SellProperty(IPlayer owner, List<ITile> properties)
     {
-        if (owner == null)
-            throw new Exception("Player cannot be null.");
-
-        if (!_playerData.ContainsKey(owner))
-            throw new Exception("Player data not found.");
+        if (owner == null) throw new Exception("Player cannot be null.");
+        if (!_playerData.ContainsKey(owner)) throw new Exception("Player data not found.");
 
         var playerProperties = GetPlayerProperties(owner);
-
         int sellPrice = 0;
 
         foreach (var property in properties)
         {
             if (!playerProperties.Contains(property))
                 throw new Exception("Property does not belong to player.");
-
-            if (property.Asset == null)
-                throw new Exception("Invalid property.");
-
+            if (property.Asset == null) throw new Exception("Invalid property.");
             if ((property.House ?? 0) > 0 || property.HasHotel == true)
                 throw new Exception("Sell buildings first.");
 
@@ -532,26 +644,16 @@ public class Game
         };
     }
 
-    public int SellBuildingsToBank(
-        IPlayer owner,
-        PropertyCity city,
-        int housesToSell,
-        bool sellHotel
-    )
+    public int SellBuildingsToBank(IPlayer owner, PropertyCity city, int housesToSell, bool sellHotel)
     {
         var tile = GetTileByCity(city);
-
         if (tile.Owner == null || !tile.Owner.Equals(owner))
             throw new Exception("Property does not belong to player.");
-
-        if (tile.Asset == null)
-            throw new Exception("Tile does not have sellable asset.");
+        if (tile.Asset == null) throw new Exception("Tile does not have sellable asset.");
 
         int houseCount = tile.House ?? 0;
         bool hasHotel = tile.HasHotel ?? false;
-
-        if (!hasHotel && houseCount == 0)
-            return 0;
+        if (!hasHotel && houseCount == 0) return 0;
 
         int soldValue = 0;
         int houseSellPrice = GetHousePrice(tile.Asset) / 2;
@@ -562,20 +664,14 @@ public class Game
             soldValue += houseSellPrice * 5;
         }
 
-        if (housesToSell > houseCount)
-            throw new Exception("Not enough houses to sell.");
-
+        if (housesToSell > houseCount) throw new Exception("Not enough houses to sell.");
         if (housesToSell > 0)
         {
             tile.House = houseCount - housesToSell;
             soldValue += houseSellPrice * housesToSell;
         }
 
-        if (soldValue > 0)
-        {
-            AddPlayerMoney(owner, new Money(soldValue));
-        }
-
+        if (soldValue > 0) AddPlayerMoney(owner, new Money(soldValue));
         return soldValue;
     }
 
@@ -584,12 +680,9 @@ public class Game
         var tile = GetTileByCity(city);
         if (tile.Owner == null || !tile.Owner.Equals(owner))
             throw new Exception("Property does not belong to player.");
-
-        if (tile.Asset == null)
-            throw new Exception("Invalid property.");
+        if (tile.Asset == null) throw new Exception("Invalid property.");
 
         int totalIncome = 0;
-
         int houses = tile.House ?? 0;
         bool hasHotel = tile.HasHotel ?? false;
 
@@ -598,37 +691,28 @@ public class Game
 
         if (includeBuildings)
         {
-            if (hasHotel)
-                totalIncome += SellBuildingsToBank(owner, city, 0, true);
-
+            if (hasHotel) totalIncome += SellBuildingsToBank(owner, city, 0, true);
             houses = tile.House ?? 0;
-            if (houses > 0)
-                totalIncome += SellBuildingsToBank(owner, city, houses, false);
+            if (houses > 0) totalIncome += SellBuildingsToBank(owner, city, houses, false);
         }
 
         int propertySellValue = tile.Asset.Price.Value / 2;
         tile.Owner = null;
         tile.House = 0;
         tile.HasHotel = false;
-
         AddPlayerMoney(owner, new Money(propertySellValue));
         totalIncome += propertySellValue;
-
         return totalIncome;
     }
 
     public bool isPropertyAvailable(ITile tile)
     {
-        if (tile == null)
-            throw new Exception("Tile cannot be null.");
-
+        if (tile == null) throw new Exception("Tile cannot be null.");
         return tile.Asset != null && tile.Owner == null;
     }
 
-    public bool IsPropertyAvailableForCurrentPlayer()
-    {
-        return isPropertyAvailable(GetCurrentTile(CurrentPlayer));
-    }
+    public bool IsPropertyAvailableForCurrentPlayer() =>
+        isPropertyAvailable(GetCurrentTile(CurrentPlayer));
 
     public ICard DrawCard(TileType drawType)
     {
@@ -640,27 +724,32 @@ public class Game
         };
 
         var shuffled = candidateCards.OrderBy(_ => _random.Next()).ToList();
-        if (!shuffled.Any())
-            throw new Exception("No cards available.");
-
+        if (!shuffled.Any()) throw new Exception("No cards available.");
         return shuffled.First();
     }
 
     public void ExecuteCard(ICard card, IPlayer player)
     {
-        if (card == null || player == null)
-            throw new Exception("Card or player cannot be null.");
+        if (card == null || player == null) throw new Exception("Card or player cannot be null.");
 
-        if (card is CommunityCard)
+        if (card is CommunityCard) ExecuteCommunityCard(card, player);
+        else if (card is ChanceCard) ExecuteChanceCard(card, player);
+    }
+
+    private int HandleStreetRepairs(IPlayer player)
+    {
+        int houseCost = 40;
+        int hotelCost = 115;
+        int totalCost = 0;
+        foreach (var tile in _board.Tiles)
         {
-            ExecuteCommunityCard(card, player);
-            NextPlayer();
+            if (tile.Owner != null && tile.Owner.Equals(player) && tile.Asset != null)
+            {
+                totalCost += (tile.House ?? 0) * houseCost;
+                totalCost = tile.HasHotel == true ? totalCost + hotelCost : totalCost;
+            }
         }
-        else if (card is ChanceCard)
-        {
-            ExecuteChanceCard(card, player);
-            NextPlayer();
-        }
+        return totalCost;
     }
 
     private void ExecuteCommunityCard(ICard card, IPlayer player)
@@ -670,75 +759,54 @@ public class Game
             case CardBehaviour.AdvanceToGo:
                 MovePieceTo(player, GetTileByType(TileType.StartTile));
                 break;
-
             case CardBehaviour.BankError:
                 AddPlayerMoney(player, new Money(MoneyValue.fifty));
                 break;
-
             case CardBehaviour.DoctorFees:
                 SubstractPlayerMoney(player, new Money(MoneyValue.fifty));
                 break;
-
             case CardBehaviour.FromSaleOfStock:
                 AddPlayerMoney(player, new Money(MoneyValue.fifty));
                 break;
-
             case CardBehaviour.GetOutOfJailFree:
-                if (CheckPlayerJailStatus(player))
-                    ReleaseFromJail(player);
-                else
-                    player.JailFreeCardCount++;
+                if (CheckPlayerJailStatus(player)) ReleaseFromJail(player);
+                else player.JailFreeCardCount++;
                 break;
-
             case CardBehaviour.GoToJail:
                 SendPieceToJail(player);
                 break;
-
             case CardBehaviour.HolidayFundMatures:
                 AddPlayerMoney(player, new Money(MoneyValue.hundred));
                 break;
-
             case CardBehaviour.IncomeTaxRefund:
                 AddPlayerMoney(player, new Money(MoneyValue.hundred));
                 break;
-
             case CardBehaviour.Birthday:
                 foreach (var p in _players)
-                {
-                    if (!p.Equals(player))
-                        TransferPlayerMoney(p, player, new Money(MoneyValue.ten));
-                }
+                    if (!p.Equals(player)) TransferPlayerMoney(p, player, new Money(MoneyValue.ten));
                 break;
-
             case CardBehaviour.LifeInsuranceMatures:
                 AddPlayerMoney(player, new Money(MoneyValue.hundred));
                 break;
-
             case CardBehaviour.PayHospitalFees:
                 SubstractPlayerMoney(player, new Money(MoneyValue.hundred));
                 break;
-
             case CardBehaviour.PaySchoolFees:
                 SubstractPlayerMoney(player, new Money(MoneyValue.fifty));
                 break;
-
             case CardBehaviour.ConsultancyFee:
                 AddPlayerMoney(player, new Money(MoneyValue.twenty + MoneyValue.five));
                 break;
-
             case CardBehaviour.StreetRepairs:
                 int totalCost = HandleStreetRepairs(player);
                 SubstractPlayerMoney(player, new Money(totalCost));
                 break;
-
             case CardBehaviour.BeautyContestPrize:
                 AddPlayerMoney(player, new Money(MoneyValue.hundred));
                 break;
-
             case CardBehaviour.InheritMoney:
                 AddPlayerMoney(player, new Money(MoneyValue.hundred));
                 break;
-
             default:
                 throw new Exception("Card behaviour not implemented.");
         }
@@ -752,85 +820,63 @@ public class Game
                 MovePieceTo(player, GetTileByType(TileType.StartTile));
                 AddPlayerMoney(player, new Money(StartBonus));
                 break;
-
             case CardBehaviour.AdvanceToIllinois:
                 MovePieceTo(player, GetTileByPropertyCity(PropertyCity.IllinoisAvenue));
                 break;
-
             case CardBehaviour.AdvanceToStCharles:
                 MovePieceTo(player, GetTileByPropertyCity(PropertyCity.StCharlesPlace));
                 break;
-
             case CardBehaviour.AdvanceNearestUtility:
                 MoveToNearestUtility(player);
                 break;
-
             case CardBehaviour.AdvanceNearestRailroad:
                 MoveToNearestRailroad(player);
                 break;
-
             case CardBehaviour.AdvanceNearestRailroadPayDouble:
                 MoveToNearestRailroad(player);
                 ExecuteTile(GetCurrentTile(player), player, true);
                 break;
-
             case CardBehaviour.BankPaysDividend:
                 AddPlayerMoney(player, new Money(MoneyValue.fifty));
                 break;
-
             case CardBehaviour.GetOutOfJailFree:
-                if (CheckPlayerJailStatus(player))
-                    ReleaseFromJail(player);
-                else
-                    player.JailFreeCardCount++;
+                if (CheckPlayerJailStatus(player)) ReleaseFromJail(player);
+                else player.JailFreeCardCount++;
                 break;
-
             case CardBehaviour.GoBackThreeSpaces:
                 MovePiece(player, -3);
                 break;
-
             case CardBehaviour.GoToJail:
                 SendPieceToJail(player);
                 break;
-
             case CardBehaviour.MakeGeneralRepairs:
                 int totalCost = HandleStreetRepairs(player);
                 SubstractPlayerMoney(player, new Money(totalCost));
                 break;
-
             case CardBehaviour.PayPoorTax:
                 SubstractPlayerMoney(player, new Money(MoneyValue.ten + MoneyValue.five));
                 break;
-
             case CardBehaviour.TakeTripToReadingRailroad:
                 MovePieceTo(player, GetTileByPropertyCity(PropertyCity.ReadingRailroad));
                 break;
-
             case CardBehaviour.AdvanceToBoardwalk:
                 MovePieceTo(player, GetTileByPropertyCity(PropertyCity.Boardwalk));
                 break;
-
             case CardBehaviour.ChairmanOfTheBoard:
                 foreach (var p in _players)
-                {
-                    if (!p.Equals(player))
-                        TransferPlayerMoney(player, p, new Money(MoneyValue.fifty));
-                }
+                    if (!p.Equals(player)) TransferPlayerMoney(player, p, new Money(MoneyValue.fifty));
                 break;
-
             case CardBehaviour.YourBuildingLoanMatures:
                 AddPlayerMoney(player, new Money(MoneyValue.hundred + MoneyValue.fifty));
                 break;
-
             default:
                 throw new Exception("Card behaviour not implemented.");
         }
     }
 
-    public void ExecuteTile(ITile tile, IPlayer player, bool doubleRent = false)
+    public ICard? ExecuteTile(ITile tile, IPlayer player, bool doubleRent = false)
     {
-        if (tile == null || player == null)
-            throw new Exception("Tile or player cannot be null.");
+        if (tile == null || player == null) throw new Exception("Tile or player cannot be null.");
 
         switch (tile.Type)
         {
@@ -842,43 +888,31 @@ public class Game
                     if (!tile.Owner!.Equals(player))
                     {
                         int rent = Math.Max(10, tile.Asset!.Price.Value / 10);
-
-                        if (doubleRent)
-                            rent *= 2;
-
+                        if (doubleRent) rent *= 2;
                         SubstractPlayerMoney(player, new Money(rent));
-
-                        // FIX: Tidak perlu cek bankruptcy di sini karena
-                        // SubstractPlayerMoney sudah invoke PlayerBankrupt jika bangkrut
-                        if (!player.IsBankrupt)
-                            AddPlayerMoney(tile.Owner, new Money(rent));
+                        if (!player.IsBankrupt) AddPlayerMoney(tile.Owner, new Money(rent));
                     }
                 }
-                break;
-
+                return null;
             case TileType.TaxTile:
             case TileType.PayTaxTile:
                 SubstractPlayerMoney(player, new Money(MoneyValue.hundred));
-                break;
-
+                return null;
             case TileType.GoToJailTile:
                 SendPieceToJail(player);
-                break;
-
+                return null;
             case TileType.DrawChance:
             case TileType.DrawCommunity:
                 var card = DrawCard(tile.Type);
                 ExecuteCard(card, player);
-                break;
-
-            case TileType.StartTile:
-            case TileType.FreeParkingTile:
-            case TileType.ActionTile:
-            case TileType.JailTile:
+                return card;
             default:
-                break;
+                return null;
         }
     }
+
+    public List<ITile> GetPlayerProperties(IPlayer player) =>
+        _board.Tiles.Where(t => t.Owner != null && t.Owner.Equals(player)).ToList();
 
     public IPlayer? GetWinnerOrNull()
     {
@@ -886,17 +920,11 @@ public class Game
         return activePlayers.Count == 1 ? activePlayers[0] : null;
     }
 
-    public IPlayer? FindPlayerByName(string playerName)
-    {
-        return _players.FirstOrDefault(p =>
-            p.Name.Equals(playerName, StringComparison.OrdinalIgnoreCase)
-        );
-    }
+    public IPlayer? FindPlayerByName(string playerName) =>
+        _players.FirstOrDefault(p => p.Name.Equals(playerName, StringComparison.OrdinalIgnoreCase));
 
-    public bool IsPropertyOwnedBy(ITile tile, IPlayer player)
-    {
-        return tile.Owner != null && tile.Owner.Equals(player);
-    }
+    public bool IsPropertyOwnedBy(ITile tile, IPlayer player) =>
+        tile.Owner != null && tile.Owner.Equals(player);
 
     public bool TryExecuteLandingForCurrentPlayer(out ICard? drawnCard)
     {
@@ -907,9 +935,6 @@ public class Game
         if (tile.Type == TileType.DrawChance || tile.Type == TileType.DrawCommunity)
         {
             drawnCard = DrawCard(tile.Type);
-            Console.WriteLine(
-                $"Player {player.Name} drew card: {drawnCard.Description} with behaviour {drawnCard.Behaviour}"
-            );
             ExecuteCard(drawnCard, player);
             NextPlayer();
             return true;
@@ -927,19 +952,13 @@ public class Game
             IsGameEnded?.Invoke(winner);
             return true;
         }
-
         return false;
     }
 
     public bool EndGame()
     {
         bool isGameEnded = CheckWinner();
-
-        if (isGameEnded)
-        {
-            _gameEnded = true;
-        }
-
+        if (isGameEnded) _gameEnded = true;
         return isGameEnded;
     }
 }
