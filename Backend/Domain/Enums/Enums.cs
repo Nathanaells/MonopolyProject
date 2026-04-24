@@ -112,7 +112,6 @@ public enum CardBehaviour
     InheritMoney,
 }
 
-
 public enum JailRollResult
 {
     None,
