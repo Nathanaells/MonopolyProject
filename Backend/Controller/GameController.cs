@@ -1,3 +1,4 @@
+using Backend.Domain.DTOs;
 using Backend.Domain.Entities;
 using Backend.Domain.Enums;
 using Backend.Domain.Interfaces;
@@ -37,11 +38,13 @@ public class GameController : ControllerBase, IGameController
         if (request.PlayerNames == null || request.PlayerNames.Count < 2)
             return BadRequest("Minimal 2 pemain.");
 
-        var board = BoardFactory.CreateBoard();
-        var players = PlayerFactory.CreatePlayers(request.PlayerNames.Distinct().ToArray());
-        var pieces = PieceFactory.CreateStandardPieces();
-        var cards = CardFactory.CreateDefaultCards();
-        var money = MoneyFactory.CreateMoney();
+        IBoard board = BoardFactory.CreateBoard();
+        List<IPlayer> players = PlayerFactory.CreatePlayers(
+            request.PlayerNames.Distinct().ToArray()
+        );
+        List<IPiece> pieces = PieceFactory.CreateStandardPieces();
+        List<ICard> cards = CardFactory.CreateDefaultCards();
+        List<IMoney> money = MoneyFactory.CreateMoney();
 
         _activeGame = new Game(board, players, pieces, cards, money);
 
@@ -63,7 +66,7 @@ public class GameController : ControllerBase, IGameController
         if (_activeGame == null)
             return BadRequest("Game belum dimulai.");
 
-        var tiles = _activeGame
+        List<TileResponseDTO> tiles = _activeGame
             .Board.Tiles.Select(
                 (tile, index) =>
                     new TileResponseDTO(
@@ -90,7 +93,7 @@ public class GameController : ControllerBase, IGameController
     [HttpGet("pieces")]
     public ActionResult<List<PieceResponseDTO>> GetAvailablePieces()
     {
-        var allPieces = Enum.GetValues<PieceType>()
+        List<PieceResponseDTO> allPieces = Enum.GetValues<PieceType>()
             .Select(p => new PieceResponseDTO(
                 p.ToString(),
                 _activeGame == null || _activeGame.IsPieceAvailable(p)
@@ -105,13 +108,13 @@ public class GameController : ControllerBase, IGameController
         if (_activeGame == null)
             return BadRequest("Game belum dimulai.");
 
-        var player = _activeGame.FindPlayerByName(request.PlayerName);
+        IPlayer? player = _activeGame.FindPlayerByName(request.PlayerName);
         if (player == null)
         {
             return BadRequest("Pemain tidak ditemukan.");
         }
 
-        if (!Enum.TryParse<PieceType>(request.PieceType, true, out var pieceType))
+        if (!Enum.TryParse<PieceType>(request.PieceType, true, out PieceType pieceType))
         {
             return BadRequest("Piece tidak valid.");
         }
@@ -142,7 +145,7 @@ public class GameController : ControllerBase, IGameController
 
         try
         {
-            var result = _activeGame.RollTurn();
+            RollTurnResult result = _activeGame.RollTurn();
 
             return Ok(
                 new RollTurnResponseDTO(
@@ -197,7 +200,7 @@ public class GameController : ControllerBase, IGameController
         if (player == null)
             return BadRequest("Pemain tidak ditemukan.");
 
-        if (!Enum.TryParse<PropertyCity>(request.City, true, out var city))
+        if (!Enum.TryParse<PropertyCity>(request.City, true, out PropertyCity city))
             return BadRequest("Kota tidak valid.");
 
         int income = _activeGame.SellPropertyToBank(player, city, request.IncludeBuildings);
@@ -214,11 +217,11 @@ public class GameController : ControllerBase, IGameController
         if (_activeGame == null)
             return BadRequest("Game belum dimulai.");
 
-        var player = _activeGame.FindPlayerByName(request.PlayerName);
+        IPlayer? player = _activeGame.FindPlayerByName(request.PlayerName);
         if (player == null)
             return BadRequest("Pemain tidak ditemukan.");
 
-        if (!Enum.TryParse<PropertyCity>(request.City, true, out var city))
+        if (!Enum.TryParse<PropertyCity>(request.City, true, out PropertyCity city))
             return BadRequest("Kota tidak valid.");
 
         int income = _activeGame.SellBuildingsToBank(
@@ -257,11 +260,11 @@ public class GameController : ControllerBase, IGameController
         if (_activeGame == null)
             return BadRequest("Game belum dimulai.");
 
-        var player = _activeGame.FindPlayerByName(playerName);
+        IPlayer? player = _activeGame.FindPlayerByName(playerName);
         if (player == null)
             return BadRequest("Pemain tidak ditemukan.");
 
-        var properties = _activeGame
+        List<TileResponseDTO> properties = _activeGame
             .GetPlayerProperties(player)
             .Select(
                 (tile, index) =>
@@ -295,11 +298,11 @@ public class GameController : ControllerBase, IGameController
         if (_activeGame == null)
             return BadRequest("Game belum dimulai.");
 
-        var player = _activeGame.FindPlayerByName(request.PlayerName);
+        IPlayer? player = _activeGame.FindPlayerByName(request.PlayerName);
         if (player == null)
             return BadRequest("Pemain tidak ditemukan.");
 
-        if (!Enum.TryParse<PropertyCity>(request.City, true, out var city))
+        if (!Enum.TryParse<PropertyCity>(request.City, true, out PropertyCity city))
             return BadRequest("Kota tidak valid.");
 
         try
@@ -321,7 +324,7 @@ public class GameController : ControllerBase, IGameController
         if (_activeGame == null)
             return BadRequest("Game belum dimulai.");
 
-        var player = _activeGame.FindPlayerByName(request.PlayerName);
+        IPlayer? player = _activeGame.FindPlayerByName(request.PlayerName);
         if (player == null)
             return BadRequest("Pemain tidak ditemukan.");
 
