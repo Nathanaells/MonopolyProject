@@ -313,6 +313,13 @@ public class Game
         );
     }
 
+    public record HandleTileEffectsResult(
+        IPlayer player,
+        ICard DrawnCard,
+        ITile Tile,
+        bool RequiresBuyDecision
+    );
+
     private void HandleTileEffectsAfterMove(
         IPlayer player,
         ITile tile,
@@ -432,10 +439,10 @@ public class Game
 
     public void SendPieceToJail(IPlayer player)
     {
-        var currentTile = GetCurrentTile(player);
+        ITile currentTile = GetCurrentTile(player);
         currentTile.Pieces.Remove(_playerPiece[player]);
 
-        var jailTile = GetTileByType(TileType.JailTile);
+        ITile jailTile = GetTileByType(TileType.JailTile);
         jailTile.Pieces.Add(_playerPiece[player]);
         player.IsInJail = true;
         player.JailTurnsRemaining = 3;
@@ -445,7 +452,7 @@ public class Game
 
     public void ReleaseFromJail(IPlayer player)
     {
-        var jailTile = GetTileByType(TileType.JailTile);
+        ITile jailTile = GetTileByType(TileType.JailTile);
         jailTile.Pieces.Remove(_playerPiece[player]);
         player.IsInJail = false;
         player.JailTurnsRemaining = 0;
@@ -539,7 +546,7 @@ public class Game
     {
         if (!wantsToBuy)
             return false;
-        var tile = GetCurrentTile(player);
+        ITile tile = GetCurrentTile(player);
         if (!isPropertyAvailable(tile))
             return false;
         int price = tile.Asset!.Price.Value;
@@ -565,7 +572,7 @@ public class Game
 
     public void BuyBuilding(IPlayer player, PropertyCity city, bool buildHotel)
     {
-        var tile = GetTileByCity(city);
+        ITile tile = GetTileByCity(city);
 
         if (tile.Asset == null)
             throw new Exception("This tile has no asset.");
@@ -573,17 +580,21 @@ public class Game
         if (tile.Owner == null || !tile.Owner.Equals(player))
             throw new Exception("You do not own this property.");
 
-        var color = tile.Asset.Color;
+        Color? color = tile.Asset.Color;
         if (color == null)
-            throw new Exception("This property cannot have buildings (no color).");
+        {
+            throw new Exception("Property ini tidak memiliki warna.");
+        }
 
-        var sameColorTiles = _board.Tiles.Where(t => t.Asset?.Color == color).ToList();
+        List<ITile> sameColorTiles = _board.Tiles.Where(t => t.Asset?.Color == color).ToList();
 
         bool hasMonopoly = sameColorTiles.All(t => t.Owner != null && t.Owner.Equals(player));
         if (!hasMonopoly)
+        {
             throw new Exception(
                 "Kamu harus memiliki semua properti warna yang sama terlebih dahulu."
             );
+        }
 
         int housePrice = GetHousePrice(tile.Asset);
         int currentHouses = tile.House ?? 0;
@@ -614,10 +625,10 @@ public class Game
 
     public int SellAllAssetsToBank(IPlayer player)
     {
-        var properties = GetPlayerProperties(player).ToList();
+        List<ITile> properties = GetPlayerProperties(player).ToList();
         int totalIncome = 0;
 
-        foreach (var tile in properties)
+        foreach (ITile tile in properties)
         {
             if (tile.Asset == null)
                 continue;
@@ -657,11 +668,11 @@ public class Game
         bool sellHotel
     )
     {
-        var tile = GetTileByCity(city);
+        ITile tile = GetTileByCity(city);
         if (tile.Owner == null || !tile.Owner.Equals(owner))
-            throw new Exception("Property does not belong to player.");
+            throw new Exception("Property ini tidak dimiliki oleh pemain.");
         if (tile.Asset == null)
-            throw new Exception("Tile does not have sellable asset.");
+            throw new Exception("Tile tidak memiliki aset yang bisa dijual.");
 
         int houseCount = tile.House ?? 0;
         bool hasHotel = tile.HasHotel ?? false;
@@ -692,18 +703,18 @@ public class Game
 
     public int SellPropertyToBank(IPlayer owner, PropertyCity city, bool includeBuildings = true)
     {
-        var tile = GetTileByCity(city);
+        ITile tile = GetTileByCity(city);
         if (tile.Owner == null || !tile.Owner.Equals(owner))
-            throw new Exception("Property does not belong to player.");
+            throw new Exception("Property ini tidak dimiliki oleh pemain.");
         if (tile.Asset == null)
-            throw new Exception("Invalid property.");
+            throw new Exception("Property tidak valid.");
 
         int totalIncome = 0;
         int houses = tile.House ?? 0;
         bool hasHotel = tile.HasHotel ?? false;
 
         if ((houses > 0 || hasHotel) && !includeBuildings)
-            throw new Exception("Property has buildings. Sell buildings first.");
+            throw new Exception("Property ini memiliki bangunan. Jual bangunan terlebih dahulu.");
 
         if (includeBuildings)
         {

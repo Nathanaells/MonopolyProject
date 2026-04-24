@@ -107,10 +107,14 @@ public class GameController : ControllerBase, IGameController
 
         var player = _activeGame.FindPlayerByName(request.PlayerName);
         if (player == null)
+        {
             return BadRequest("Pemain tidak ditemukan.");
+        }
 
         if (!Enum.TryParse<PieceType>(request.PieceType, true, out var pieceType))
+        {
             return BadRequest("Piece tidak valid.");
+        }
 
         try
         {
@@ -127,10 +131,14 @@ public class GameController : ControllerBase, IGameController
     public ActionResult<RollTurnResponseDTO> RollTurn()
     {
         if (_activeGame == null)
+        {
             return BadRequest("Game belum dimulai.");
+        }
 
         if (_activeGame.GameEnded)
+        {
             return BadRequest("Game sudah selesai.");
+        }
 
         try
         {
@@ -160,7 +168,9 @@ public class GameController : ControllerBase, IGameController
     public ActionResult<GameStateResponse> BuyProperty([FromBody] BuyPropertyRequestDTO request)
     {
         if (_activeGame == null)
+        {
             return BadRequest("Game Not Started.");
+        }
 
         try
         {
@@ -179,9 +189,11 @@ public class GameController : ControllerBase, IGameController
     )
     {
         if (_activeGame == null)
+        {
             return BadRequest("Game belum dimulai.");
+        }
 
-        var player = _activeGame.FindPlayerByName(request.PlayerName);
+        IPlayer? player = _activeGame.FindPlayerByName(request.PlayerName);
         if (player == null)
             return BadRequest("Pemain tidak ditemukan.");
 
