@@ -1,17 +1,13 @@
 namespace Backend.DTOs;
+
 using Backend.Domain.Enums;
 using Backend.Domain.Interfaces;
-
 
 public record StartGameRequestDTO(List<string> PlayerNames);
 
 public record BuyPropertyRequestDTO(bool Buy);
 
-public record SellPropertyRequestDTO(
-    string PlayerName,
-    string City,
-    bool IncludeBuildings = true
-);
+public record SellPropertyRequestDTO(string PlayerName, string City, bool IncludeBuildings = true);
 
 public record SellBuildingRequestDTO(
     string PlayerName,
@@ -70,34 +66,10 @@ public record PlayerResponseDTO(
     int? CurrentTileIndex = null
 );
 
+public record PieceResponseDTO(string PieceType, bool IsAvailable);
 
-public record RollTurnResult(
-    int DiceTotal,
-    int Dice1,
-    int Dice2,
-    ITile? LandedTile,
-    bool RequiresBuyDecision,
-    ICard? DrawnCard,
-    JailRollResult JailRollResult
-);
+public record SelectPieceRequestDTO(string PlayerName, string PieceType);
 
-
-public record PieceResponseDTO(
-    string PieceType,
-    bool IsAvailable
-);
-
-public record SelectPieceRequestDTO(
-    string PlayerName,
-    string PieceType
-);
-
-public record BuyBuildingRequestDTO(
-    string PlayerName,
-    string City,
-    bool BuildHotel = false
-);
+public record BuyBuildingRequestDTO(string PlayerName, string City, bool BuildHotel = false);
 
 public record SellAllAssetsRequestDTO(string PlayerName);
-
-

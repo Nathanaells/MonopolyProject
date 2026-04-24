@@ -1,4 +1,4 @@
-import { API_BASE } from "../Constant/Url";
+import { baseURL } from "../Constant/Url";
 import type {
   TileData,
   GameState,
@@ -8,7 +8,6 @@ import type {
 } from "../Interfaces/Interface";
 import { ShowError } from "../Constant/ToastUI";
 
-// ─── Types ────────────────────────────────────────────────────────
 
 const parseResponseBody = async <T = unknown>(
   res: Response,
@@ -50,7 +49,7 @@ const getErrorMessage = (data: unknown, fallback: string): string => {
 };
 
 const normalizeTile = (tile: TileData): TileData => {
-  const ownerValue = tile.owner as unknown;
+  const ownerValue = tile.owner  || null;
   if (
     ownerValue &&
     typeof ownerValue === "object" &&
@@ -68,7 +67,7 @@ const normalizeTile = (tile: TileData): TileData => {
 
 export const gameService = {
   async startGame(playerNames: string[]): Promise<GameState> {
-    const res = await fetch(`${API_BASE}/start`, {
+    const res = await fetch(`${baseURL}/start`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ playerNames }),
@@ -83,7 +82,7 @@ export const gameService = {
   },
 
   async getGameState(): Promise<GameState> {
-    const res = await fetch(`${API_BASE}/state`);
+    const res = await fetch(`${baseURL}/state`);
     const data = await parseResponseBody<GameState | unknown>(res);
     if (!res.ok) {
       const message = getErrorMessage(data, "Failed to fetch game state");
@@ -95,7 +94,7 @@ export const gameService = {
 
   // ── Board ───────────────────────────────────────────────────────
   async getBoardTiles(): Promise<TileData[]> {
-    const res = await fetch(`${API_BASE}/board/tiles`);
+    const res = await fetch(`${baseURL}/board/tiles`);
     const data = await parseResponseBody<TileData[] | unknown>(res);
     if (!res.ok) {
       const message = getErrorMessage(data, "Failed to load board tiles");
@@ -106,7 +105,7 @@ export const gameService = {
   },
 
   async getAvailablePieces(): Promise<PieceData[]> {
-    const res = await fetch(`${API_BASE}/pieces`);
+    const res = await fetch(`${baseURL}/pieces`);
     const data = await parseResponseBody<PieceData[] | unknown>(res);
     if (!res.ok) {
       const message = getErrorMessage(data, "Failed to load pieces");
@@ -117,7 +116,7 @@ export const gameService = {
   },
 
   async selectPiece(playerName: string, pieceType: string): Promise<GameState> {
-    const res = await fetch(`${API_BASE}/select-piece`, {
+    const res = await fetch(`${baseURL}/select-piece`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ playerName, pieceType }),
@@ -133,7 +132,7 @@ export const gameService = {
 
   // ── Roll ────────────────────────────────────────────────────────
   async rollTurn(): Promise<RollResult> {
-    const res = await fetch(`${API_BASE}/turn/roll`, { method: "POST" });
+    const res = await fetch(`${baseURL}/turn/roll`, { method: "POST" });
     const data = await parseResponseBody<RollResult | unknown>(res);
     if (!res.ok) {
       const message = getErrorMessage(data, "Failed to roll dice");
@@ -145,7 +144,7 @@ export const gameService = {
 
   // ── Buy property ────────────────────────────────────────────────
   async buyProperty(buy: boolean): Promise<GameState> {
-    const res = await fetch(`${API_BASE}/turn/buy-property`, {
+    const res = await fetch(`${baseURL}/turn/buy-property`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ buy }),
@@ -162,7 +161,7 @@ export const gameService = {
   // ── Player properties ────────────────────────────────────────────
   async getPlayerProperties(playerName: string): Promise<TileData[]> {
     const res = await fetch(
-      `${API_BASE}/player-properties?playerName=${encodeURIComponent(playerName)}`,
+      `${baseURL}/player-properties?playerName=${encodeURIComponent(playerName)}`,
     );
     const data = await parseResponseBody<TileData[] | unknown>(res);
     if (!res.ok) {
@@ -179,7 +178,7 @@ export const gameService = {
     city: string,
     buildHotel: boolean,
   ): Promise<GameState> {
-    const res = await fetch(`${API_BASE}/buy-building`, {
+    const res = await fetch(`${baseURL}/buy-building`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ playerName, city, buildHotel }),
@@ -199,7 +198,7 @@ export const gameService = {
     city: string,
     includeBuildings: boolean,
   ): Promise<SellResult> {
-    const res = await fetch(`${API_BASE}/sell-property`, {
+    const res = await fetch(`${baseURL}/sell-property`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ playerName, city, includeBuildings }),
@@ -220,7 +219,7 @@ export const gameService = {
     housesToSell: number,
     sellHotel: boolean,
   ): Promise<SellResult> {
-    const res = await fetch(`${API_BASE}/sell-buildings`, {
+    const res = await fetch(`${baseURL}/sell-buildings`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ playerName, city, housesToSell, sellHotel }),
@@ -236,7 +235,7 @@ export const gameService = {
 
   // ── Sell ALL assets ──────────────────────────────────────────────
   async sellAllAssets(playerName: string): Promise<SellResult> {
-    const res = await fetch(`${API_BASE}/sell-all-assets`, {
+    const res = await fetch(`${baseURL}/sell-all-assets`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ playerName }),
@@ -256,7 +255,7 @@ export const gameService = {
     description: string,
     behaviour: number,
   ): Promise<GameState> {
-    const res = await fetch(`${API_BASE}/execute-card`, {
+    const res = await fetch(`${baseURL}/execute-card`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ cardType, description, behaviour }),

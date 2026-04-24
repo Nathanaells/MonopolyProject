@@ -63,30 +63,38 @@ public class GameController : ControllerBase, IGameController
         if (_activeGame == null)
             return BadRequest("Game belum dimulai.");
 
-        var tiles = _activeGame.Board.Tiles
-            .Select((tile, index) => new TileResponseDTO(
-                index,
-                tile.Type.ToString(),
-                new PointDTO(tile.Point.X, tile.Point.Y),
-                tile.Asset == null ? null : new AssetResponseDTO(
-                    tile.Asset.Price.Value,
-                    tile.Asset.City.PropertyCity.ToString(),
-                    tile.Asset.Color?.ToString() ?? ""
-                ),
-                tile.Owner == null ? null : new PlayerResponseDTO(
-                    tile.Owner.Name,
-                    _activeGame.GetPlayerBalance(tile.Owner),
-                    tile.Owner.IsInJail,
-                    tile.Owner.IsBankrupt,
-                    _activeGame.GetPlayerProperties(tile.Owner)
-                        .Select(t => t.Asset?.City.PropertyCity.ToString())
-                        .Where(x => x is not null)
-                        .Cast<string>()
-                        .ToList()
-                ),
-                tile.House,
-                tile.HasHotel
-            ))
+        var tiles = _activeGame
+            .Board.Tiles.Select(
+                (tile, index) =>
+                    new TileResponseDTO(
+                        index,
+                        tile.Type.ToString(),
+                        new PointDTO(tile.Point.X, tile.Point.Y),
+                        tile.Asset == null
+                            ? null
+                            : new AssetResponseDTO(
+                                tile.Asset.Price.Value,
+                                tile.Asset.City.PropertyCity.ToString(),
+                                tile.Asset.Color?.ToString() ?? ""
+                            ),
+                        tile.Owner == null
+                            ? null
+                            : new PlayerResponseDTO(
+                                tile.Owner.Name,
+                                _activeGame.GetPlayerBalance(tile.Owner),
+                                tile.Owner.IsInJail,
+                                tile.Owner.IsBankrupt,
+                                _activeGame
+                                    .GetPlayerProperties(tile.Owner)
+                                    .Select(t => t.Asset?.City.PropertyCity.ToString())
+                                    .Where(x => x is not null)
+                                    .Cast<string>()
+                                    .ToList()
+                            ),
+                        tile.House,
+                        tile.HasHotel
+                    )
+            )
             .ToList();
 
         return Ok(tiles);
@@ -141,17 +149,19 @@ public class GameController : ControllerBase, IGameController
         {
             var result = _activeGame.RollTurn();
 
-            return Ok(new RollTurnResponseDTO(
-                result.DiceTotal,
-                result.Dice1,
-                result.Dice2,
-                result.LandedTile?.Type.ToString() ?? "None",
-                result.LandedTile?.Asset?.City.PropertyCity.ToString(),
-                result.RequiresBuyDecision,
-                result.DrawnCard?.Description,
-                result.JailRollResult,
-                GameStateMapper.BuildState(_activeGame)
-            ));
+            return Ok(
+                new RollTurnResponseDTO(
+                    result.DiceTotal,
+                    result.Dice1,
+                    result.Dice2,
+                    result.LandedTile?.Type.ToString() ?? "None",
+                    result.LandedTile?.Asset?.City.PropertyCity.ToString(),
+                    result.RequiresBuyDecision,
+                    result.DrawnCard?.Description,
+                    result.JailRollResult,
+                    GameStateMapper.BuildState(_activeGame)
+                )
+            );
         }
         catch (Exception ex)
         {
@@ -178,7 +188,8 @@ public class GameController : ControllerBase, IGameController
 
     [HttpPost("sell-property")]
     public ActionResult<SellResultResponseDTO> SellPropertyToBank(
-        [FromBody] SellPropertyRequestDTO request)
+        [FromBody] SellPropertyRequestDTO request
+    )
     {
         if (_activeGame == null)
             return BadRequest("Game belum dimulai.");
@@ -198,7 +209,8 @@ public class GameController : ControllerBase, IGameController
 
     [HttpPost("sell-buildings")]
     public ActionResult<SellResultResponseDTO> SellBuildingsToBank(
-        [FromBody] SellBuildingRequestDTO request)
+        [FromBody] SellBuildingRequestDTO request
+    )
     {
         if (_activeGame == null)
             return BadRequest("Game belum dimulai.");
@@ -211,21 +223,29 @@ public class GameController : ControllerBase, IGameController
             return BadRequest("Kota tidak valid.");
 
         int income = _activeGame.SellBuildingsToBank(
-            player, city, request.HousesToSell, request.SellHotel);
+            player,
+            city,
+            request.HousesToSell,
+            request.SellHotel
+        );
 
         return Ok(new SellResultResponseDTO(income, GameStateMapper.BuildState(_activeGame)));
     }
 
     [HttpPost("execute-card")]
     public ActionResult<GameStateResponse> ExecuteCardForCurrentPlayer(
-        [FromBody] ExecuteCardRequestDTO request)
+        [FromBody] ExecuteCardRequestDTO request
+    )
     {
         if (_activeGame == null)
             return BadRequest("Game belum dimulai.");
 
         ICard card = request.CardType.Equals("Chance", StringComparison.OrdinalIgnoreCase)
             ? new ChanceCard(request.Description ?? request.Behaviour.ToString(), request.Behaviour)
-            : new CommunityCard(request.Description ?? request.Behaviour.ToString(), request.Behaviour);
+            : new CommunityCard(
+                request.Description ?? request.Behaviour.ToString(),
+                request.Behaviour
+            );
 
         _activeGame.ExecuteCard(card, _activeGame.CurrentPlayer);
 
@@ -242,34 +262,40 @@ public class GameController : ControllerBase, IGameController
         if (player == null)
             return BadRequest("Pemain tidak ditemukan.");
 
-        var properties = _activeGame.GetPlayerProperties(player)
-            .Select((tile, index) =>
-            {
-                int tileIndex = Array.IndexOf(_activeGame.Board.Tiles, tile);
-                return new TileResponseDTO(
-                    tileIndex,
-                    tile.Type.ToString(),
-                    new PointDTO(tile.Point.X, tile.Point.Y),
-                    tile.Asset == null ? null : new AssetResponseDTO(
-                        tile.Asset.Price.Value,
-                        tile.Asset.City.PropertyCity.ToString(),
-                        tile.Asset.Color?.ToString() ?? ""
-                    ),
-                    new PlayerResponseDTO(
-                        player.Name,
-                        _activeGame.GetPlayerBalance(player),
-                        player.IsInJail,
-                        player.IsBankrupt,
-                        _activeGame.GetPlayerProperties(player)
-                            .Select(t => t.Asset?.City.PropertyCity.ToString())
-                            .Where(x => x is not null)
-                            .Cast<string>()
-                            .ToList()
-                    ),
-                    tile.House,
-                    tile.HasHotel
-                );
-            })
+        var properties = _activeGame
+            .GetPlayerProperties(player)
+            .Select(
+                (tile, index) =>
+                {
+                    int tileIndex = Array.IndexOf(_activeGame.Board.Tiles, tile);
+                    return new TileResponseDTO(
+                        tileIndex,
+                        tile.Type.ToString(),
+                        new PointDTO(tile.Point.X, tile.Point.Y),
+                        tile.Asset == null
+                            ? null
+                            : new AssetResponseDTO(
+                                tile.Asset.Price.Value,
+                                tile.Asset.City.PropertyCity.ToString(),
+                                tile.Asset.Color?.ToString() ?? ""
+                            ),
+                        new PlayerResponseDTO(
+                            player.Name,
+                            _activeGame.GetPlayerBalance(player),
+                            player.IsInJail,
+                            player.IsBankrupt,
+                            _activeGame
+                                .GetPlayerProperties(player)
+                                .Select(t => t.Asset?.City.PropertyCity.ToString())
+                                .Where(x => x is not null)
+                                .Cast<string>()
+                                .ToList()
+                        ),
+                        tile.House,
+                        tile.HasHotel
+                    );
+                }
+            )
             .ToList();
 
         return Ok(properties);
@@ -301,7 +327,8 @@ public class GameController : ControllerBase, IGameController
 
     [HttpPost("sell-all-assets")]
     public ActionResult<SellResultResponseDTO> SellAllAssets(
-        [FromBody] SellAllAssetsRequestDTO request)
+        [FromBody] SellAllAssetsRequestDTO request
+    )
     {
         if (_activeGame == null)
             return BadRequest("Game belum dimulai.");

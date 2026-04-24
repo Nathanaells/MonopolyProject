@@ -1,4 +1,5 @@
 namespace Backend.Domain.DTOs;
+
 using Backend.Domain.Enums;
 using Backend.Domain.Interfaces;
 
@@ -12,5 +13,4 @@ public record RollTurnResult(
     bool RequiresBuyDecision,
     ICard? DrawnCard,
     JailRollResult JailRollResult
-
 );
