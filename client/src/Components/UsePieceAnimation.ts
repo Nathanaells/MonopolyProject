@@ -1,17 +1,12 @@
-// usePieceAnimation.ts
-// Tracks piece positions and animates them step-by-step across the board.
-// Usage: call `animateMove(playerName, fromTileIndex, toTileIndex, tiles)` 
-// and it returns the current animated tile index per player.
-
 import { useState, useRef, useCallback } from "react";
 
 export interface AnimationState {
-  // playerName → currently displayed tile index (for rendering the piece)
+
   positions: Record<string, number>;
   isAnimating: boolean;
 }
 
-const STEP_DELAY_MS = 180; // ms between each tile step
+const StepDelayMs = 180; 
 
 export function usePieceAnimation(initialPositions: Record<string, number> = {}) {
   const [state, setState] = useState<AnimationState>({
@@ -20,10 +15,6 @@ export function usePieceAnimation(initialPositions: Record<string, number> = {})
   });
   const animatingRef = useRef(false);
 
-  /**
-   * Animate a piece from `from` to `to` (board wraps at `totalTiles`).
-   * Returns a promise that resolves when animation is done.
-   */
   const animateMove = useCallback(
     (
       playerName: string,
@@ -36,7 +27,7 @@ export function usePieceAnimation(initialPositions: Record<string, number> = {})
         animatingRef.current = true;
         setState((s) => ({ ...s, isAnimating: true }));
 
-        // Build the path of tile indices
+
         const steps: number[] = [];
         let cur = from;
         while (cur !== to) {
@@ -67,7 +58,7 @@ export function usePieceAnimation(initialPositions: Record<string, number> = {})
             onComplete?.();
             resolve();
           }
-        }, STEP_DELAY_MS);
+        }, StepDelayMs);
       });
     },
     []
