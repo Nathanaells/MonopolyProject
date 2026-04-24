@@ -343,12 +343,12 @@ public class Game
         drawnCard = ExecuteTile(tile, player);
     }
 
-    public void MovePiece(IPlayer player, int? step = null, int doubleRollCount = 0)
+    public void MovePiece(IPlayer player, int? step = null)
     {
         if (player == null)
             throw new Exception("Player cannot be null.");
 
-        if (doubleRollCount >= 3)
+        if (player.DoubleRoll >= 3)
         {
             SendPieceToJail(player);
             return;
