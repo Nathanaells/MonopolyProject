@@ -77,20 +77,7 @@ public class GameController : ControllerBase, IGameController
                                 tile.Asset.City.PropertyCity.ToString(),
                                 tile.Asset.Color?.ToString() ?? ""
                             ),
-                        tile.Owner == null
-                            ? null
-                            : new PlayerResponseDTO(
-                                tile.Owner.Name,
-                                _activeGame.GetPlayerBalance(tile.Owner),
-                                tile.Owner.IsInJail,
-                                tile.Owner.IsBankrupt,
-                                _activeGame
-                                    .GetPlayerProperties(tile.Owner)
-                                    .Select(t => t.Asset?.City.PropertyCity.ToString())
-                                    .Where(x => x is not null)
-                                    .Cast<string>()
-                                    .ToList()
-                            ),
+                        tile.Owner == null ? null : tile.Owner.Name,
                         tile.House,
                         tile.HasHotel
                     )
@@ -279,18 +266,7 @@ public class GameController : ControllerBase, IGameController
                                 tile.Asset.City.PropertyCity.ToString(),
                                 tile.Asset.Color?.ToString() ?? ""
                             ),
-                        new PlayerResponseDTO(
-                            player.Name,
-                            _activeGame.GetPlayerBalance(player),
-                            player.IsInJail,
-                            player.IsBankrupt,
-                            _activeGame
-                                .GetPlayerProperties(player)
-                                .Select(t => t.Asset?.City.PropertyCity.ToString())
-                                .Where(x => x is not null)
-                                .Cast<string>()
-                                .ToList()
-                        ),
+                        player.Name,
                         tile.House,
                         tile.HasHotel
                     );

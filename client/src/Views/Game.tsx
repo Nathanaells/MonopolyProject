@@ -6,7 +6,7 @@ import { ShowSuccess, ShowError } from "../Constant/ToastUI";
 import Tiles from "../Components/Tiles";
 import DiceAnimation from "../Components/DiceAnimation";
 import { usePieceAnimation } from "../Components/UsePieceAnimation";
-import { PIECE_COMPONENTS } from "../Components/MonopolyPieces";
+import { PieceComponents } from "../Components/MonopolyPieces";
 import PlayerPropertiesPanel from "../Components/PlayerPropertiesPanel";
 
 const PLAYER_COLORS = [
@@ -425,7 +425,7 @@ export default function Game() {
 
               const pieceType = playerPieces[p.name] ?? "Tophat";
               const PieceComponent =
-                PIECE_COMPONENTS[pieceType] ?? PIECE_COMPONENTS.Tophat;
+                PieceComponents[pieceType] ?? PieceComponents.Tophat;
 
               return (
                 <div

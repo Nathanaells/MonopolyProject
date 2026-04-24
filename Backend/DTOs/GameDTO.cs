@@ -27,7 +27,7 @@ public record TileResponseDTO(
     string Type,
     PointDTO Position,
     AssetResponseDTO? Asset,
-    PlayerResponseDTO? Owner,
+    string? Owner,
     int? Houses,
     bool? HasHotel
 );

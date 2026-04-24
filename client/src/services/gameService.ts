@@ -9,62 +9,6 @@ import type {
 import { ShowError } from "../Constant/ToastUI";
 
 
-const parseResponseBody = async <T = unknown>(
-  res: Response,
-): Promise<T | null> => {
-  const text = await res.text();
-  if (!text) return null;
-
-  try {
-    return JSON.parse(text) as T;
-  } catch {
-    return text as T;
-  }
-};
-
-const getErrorMessage = (data: unknown, fallback: string): string => {
-  if (!data) return fallback;
-  if (typeof data === "string") return data;
-
-  if (typeof data === "object") {
-    const obj = data as Record<string, unknown>;
-
-    if (obj.errors && typeof obj.errors === "object") {
-      const errors = obj.errors as Record<string, unknown>;
-      const firstErrorArray = Object.values(errors).find(
-        (v) => Array.isArray(v) && v.length > 0,
-      ) as unknown[] | undefined;
-
-      if (firstErrorArray && typeof firstErrorArray[0] === "string") {
-        return firstErrorArray[0];
-      }
-    }
-
-    if (typeof obj.message === "string") return obj.message;
-    if (typeof obj.title === "string") return obj.title;
-    if (typeof obj.error === "string") return obj.error;
-  }
-
-  return fallback;
-};
-
-const normalizeTile = (tile: TileData): TileData => {
-  const ownerValue = tile.owner  || null;
-  if (
-    ownerValue &&
-    typeof ownerValue === "object" &&
-    "name" in (ownerValue as Record<string, unknown>)
-  ) {
-    const ownerName = (ownerValue as { name?: unknown }).name;
-    return {
-      ...tile,
-      owner: typeof ownerName === "string" ? ownerName : undefined,
-    };
-  }
-
-  return tile;
-};
-
 export const gameService = {
   async startGame(playerNames: string[]): Promise<GameState> {
     const res = await fetch(`${baseURL}/start`, {
@@ -72,45 +16,43 @@ export const gameService = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ playerNames }),
     });
-    const data = await parseResponseBody<GameState | { message?: string }>(res);
+    const data : GameState = await res.json();
+
     if (!res.ok) {
-      const message = getErrorMessage(data, "Failed to start game");
-      ShowError(message);
-      throw new Error(message);
+    
+      ShowError("Failed to start game");
+     
     }
-    return data as GameState;
+    return data;
   },
 
   async getGameState(): Promise<GameState> {
     const res = await fetch(`${baseURL}/state`);
-    const data = await parseResponseBody<GameState | unknown>(res);
+    const data : GameState = await res.json();
     if (!res.ok) {
-      const message = getErrorMessage(data, "Failed to fetch game state");
-      ShowError(message);
-      throw new Error(message);
+      ShowError("Failed to fetch game state");
+      
     }
-    return data as GameState;
+    return data;
   },
 
-  // ── Board ───────────────────────────────────────────────────────
+
   async getBoardTiles(): Promise<TileData[]> {
     const res = await fetch(`${baseURL}/board/tiles`);
-    const data = await parseResponseBody<TileData[] | unknown>(res);
+    const data : TileData[] = await res.json();
     if (!res.ok) {
-      const message = getErrorMessage(data, "Failed to load board tiles");
-      ShowError(message);
-      throw new Error(message);
+      ShowError("Failed to load board tiles");
+  
     }
-    return (data as TileData[]).map(normalizeTile);
+    return data;
   },
 
   async getAvailablePieces(): Promise<PieceData[]> {
     const res = await fetch(`${baseURL}/pieces`);
-    const data = await parseResponseBody<PieceData[] | unknown>(res);
+    const data : PieceData[] = await res.json();
     if (!res.ok) {
-      const message = getErrorMessage(data, "Failed to load pieces");
-      ShowError(message);
-      throw new Error(message);
+      ShowError("Failed to load pieces");
+      throw new Error("Failed to load pieces");
     }
     return data as PieceData[];
   },
@@ -121,58 +63,53 @@ export const gameService = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ playerName, pieceType }),
     });
-    const data = await parseResponseBody<GameState | unknown>(res);
+    const data : GameState = await res.json();
     if (!res.ok) {
-      const message = getErrorMessage(data, "Failed to select piece");
-      ShowError(message);
-      throw new Error(message);
+      ShowError("Failed to select piece");
+      throw new Error("Failed to select piece");
     }
     return data as GameState;
   },
 
-  // ── Roll ────────────────────────────────────────────────────────
+
   async rollTurn(): Promise<RollResult> {
     const res = await fetch(`${baseURL}/turn/roll`, { method: "POST" });
-    const data = await parseResponseBody<RollResult | unknown>(res);
+    const data : RollResult = await res.json();
     if (!res.ok) {
-      const message = getErrorMessage(data, "Failed to roll dice");
-      ShowError(message);
-      throw new Error(message);
+      ShowError("Failed to roll dice");
+     
     }
-    return data as RollResult;
+    return data;
   },
 
-  // ── Buy property ────────────────────────────────────────────────
   async buyProperty(buy: boolean): Promise<GameState> {
     const res = await fetch(`${baseURL}/turn/buy-property`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ buy }),
     });
-    const data = await parseResponseBody<GameState | unknown>(res);
+    const data : GameState = await res.json();
     if (!res.ok) {
-      const message = getErrorMessage(data, "Failed to buy property");
-      ShowError(message);
-      throw new Error(message);
+      ShowError("Failed to buy property");
+      throw new Error("Failed to buy property");
     }
     return data as GameState;
   },
 
-  // ── Player properties ────────────────────────────────────────────
+
   async getPlayerProperties(playerName: string): Promise<TileData[]> {
     const res = await fetch(
       `${baseURL}/player-properties?playerName=${encodeURIComponent(playerName)}`,
     );
-    const data = await parseResponseBody<TileData[] | unknown>(res);
+    const data : TileData[] = await res.json();
     if (!res.ok) {
-      const message = getErrorMessage(data, "Failed to load player properties");
-      ShowError(message);
-      throw new Error(message);
+      
+      ShowError("Failed to fetch player properties");
+      throw new Error("Failed to fetch player properties");
     }
-    return (data as TileData[]).map(normalizeTile);
+    return data;
   },
 
-  // ── Buy building ─────────────────────────────────────────────────
   async buyBuilding(
     playerName: string,
     city: string,
@@ -183,16 +120,15 @@ export const gameService = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ playerName, city, buildHotel }),
     });
-    const data = await parseResponseBody<GameState | unknown>(res);
+    const data : GameState = await res.json();
     if (!res.ok) {
-      const message = getErrorMessage(data, "Failed to buy building");
-      ShowError(message);
-      throw new Error(message);
+      ShowError("Failed to buy building");
+      throw new Error("Failed to buy building");
     }
     return data as GameState;
   },
 
-  // ── Sell property ────────────────────────────────────────────────
+  
   async sellProperty(
     playerName: string,
     city: string,
@@ -203,16 +139,16 @@ export const gameService = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ playerName, city, includeBuildings }),
     });
-    const data = await parseResponseBody<SellResult | unknown>(res);
+    const data : SellResult = await res.json();
     if (!res.ok) {
-      const message = getErrorMessage(data, "Failed to sell property");
-      ShowError(message);
-      throw new Error(message);
+  
+      ShowError("Failed to sell property");
+      throw new Error("Failed to sell property");
     }
-    return data as SellResult;
+    return data;
   },
 
-  // ── Sell buildings ───────────────────────────────────────────────
+ 
   async sellBuildings(
     playerName: string,
     city: string,
@@ -224,32 +160,29 @@ export const gameService = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ playerName, city, housesToSell, sellHotel }),
     });
-    const data = await parseResponseBody<SellResult | unknown>(res);
+    const data : SellResult = await res.json();
     if (!res.ok) {
-      const message = getErrorMessage(data, "Failed to sell buildings");
-      ShowError(message);
-      throw new Error(message);
+      ShowError("Failed to sell buildings");
+      throw new Error("Failed to sell buildings");
     }
-    return data as SellResult;
+    return data;
   },
 
-  // ── Sell ALL assets ──────────────────────────────────────────────
+  
   async sellAllAssets(playerName: string): Promise<SellResult> {
     const res = await fetch(`${baseURL}/sell-all-assets`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ playerName }),
     });
-    const data = await parseResponseBody<SellResult | unknown>(res);
+    const data : SellResult = await res.json();
     if (!res.ok) {
-      const message = getErrorMessage(data, "Failed to sell all assets");
-      ShowError(message);
-      throw new Error(message);
+      ShowError("Failed to sell all assets");
+      throw new Error("Failed to sell all assets");
     }
-    return data as SellResult;
+    return data;
   },
 
-  // ── Execute card ─────────────────────────────────────────────────
   async executeCard(
     cardType: string,
     description: string,
@@ -260,12 +193,11 @@ export const gameService = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ cardType, description, behaviour }),
     });
-    const data = await parseResponseBody<GameState | unknown>(res);
+    const data : GameState = await res.json();
     if (!res.ok) {
-      const message = getErrorMessage(data, "Failed to execute card");
-      ShowError(message);
-      throw new Error(message);
+      ShowError("Failed to execute card");
+      throw new Error("Failed to execute card");
     }
-    return data as GameState;
+    return data;
   },
 };
