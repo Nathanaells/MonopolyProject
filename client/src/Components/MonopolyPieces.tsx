@@ -1,9 +1,5 @@
 import React from "react";
-
-interface PieceSVGProps {
-  color?: string;
-  size?: number;
-}
+import type {PieceSVGProps} from "../Interfaces/Interface"
 
 export const TopHatPiece: React.FC<PieceSVGProps> = ({
   color = "currentColor",
@@ -320,7 +316,8 @@ export const WheelbarrowPiece: React.FC<PieceSVGProps> = ({
   </svg>
 );
 
-export const PIECE_COMPONENTS: Record<string, React.FC<PieceSVGProps>> = {
+
+export const PieceComponents: Record<string, React.FC<PieceSVGProps>> = {
   Tophat: TopHatPiece,
   Car: CarPiece,
   ScottieDog: ScottieDogPiece,
@@ -331,7 +328,7 @@ export const PIECE_COMPONENTS: Record<string, React.FC<PieceSVGProps>> = {
   Wheelbarrow: WheelbarrowPiece,
 };
 
-export const PIECE_LABELS: Record<string, string> = {
+export const PieceLabels: Record<string, string> = {
   Tophat: "Top Hat",
   Car: "Race Car",
   ScottieDog: "Scottie Dog",
@@ -342,7 +339,7 @@ export const PIECE_LABELS: Record<string, string> = {
   Wheelbarrow: "Wheelbarrow",
 };
 
-export const PIECE_ORDER = [
+export const PieceOrder = [
   "Tophat",
   "Car",
   "ScottieDog",

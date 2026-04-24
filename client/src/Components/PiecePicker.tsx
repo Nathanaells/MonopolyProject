@@ -1,24 +1,10 @@
 import { useState, useEffect } from "react";
-import { PIECE_COMPONENTS, PIECE_LABELS, PIECE_ORDER } from "./MonopolyPieces";
+import { PieceComponents, PieceLabels, PieceOrder } from "../Components/MonopolyPieces";
 import { gameService } from "../services/gameService";
+import {playerColors} from "../Constant/PlayerColor"
+import type {PlayerProps} from "../Interfaces/Interface"
 
-interface Props {
-  playerNames: string[];
-  onAllPicked: () => void;
-}
-
-const PLAYER_COLORS_EXTENDED = [
-  "#ef4444",
-  "#3b82f6",
-  "#eab308",
-  "#22c55e",
-  "#a855f7",
-  "#ec4899",
-  "#06b6d4",
-  "#f97316",
-];
-
-export default function PiecePicker({ playerNames, onAllPicked }: Props) {
+export default function PiecePicker({ playerNames, onAllPicked }: PlayerProps) {
   const [available, setAvailable] = useState<Record<string, boolean>>({});
   const [selections, setSelections] = useState<Record<string, string>>({}); // playerName → pieceType
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -71,8 +57,8 @@ export default function PiecePicker({ playerNames, onAllPicked }: Props) {
           className="w-7 h-7 rounded-lg flex items-center justify-center text-lg"
           style={{
             background:
-              PLAYER_COLORS_EXTENDED[
-                currentIdx % PLAYER_COLORS_EXTENDED.length
+              playerColors[
+                currentIdx % playerColors.length
               ],
           }}
         >
@@ -90,7 +76,7 @@ export default function PiecePicker({ playerNames, onAllPicked }: Props) {
         <div className="flex gap-2 mb-4 flex-wrap">
           {Object.entries(selections).map(([name, piece]) => {
             const idx = playerNames.indexOf(name);
-            const SVG = PIECE_COMPONENTS[piece];
+            const SVG = PieceComponents[piece];
             return (
               <div
                 key={name}
@@ -99,7 +85,7 @@ export default function PiecePicker({ playerNames, onAllPicked }: Props) {
                 <SVG
                   size={18}
                   color={
-                    PLAYER_COLORS_EXTENDED[idx % PLAYER_COLORS_EXTENDED.length]
+                    playerColors[idx % playerColors.length]
                   }
                 />
                 <span className="text-zinc-400 text-xs">{name}</span>
@@ -110,8 +96,8 @@ export default function PiecePicker({ playerNames, onAllPicked }: Props) {
       )}
 
       <div className="grid grid-cols-4 gap-2">
-        {PIECE_ORDER.map((pieceType) => {
-          const SVG = PIECE_COMPONENTS[pieceType];
+        {PieceOrder.map((pieceType) => {
+          const SVG = PieceComponents[pieceType];
           const isTaken = !available[pieceType];
           const isCurrentPlayerPick = selections[currentPlayer] === pieceType;
 
@@ -132,7 +118,7 @@ export default function PiecePicker({ playerNames, onAllPicked }: Props) {
               style={
                 isCurrentPlayerPick
                   ? {
-                      boxShadow: `0 0 0 2px ${PLAYER_COLORS_EXTENDED[currentIdx % PLAYER_COLORS_EXTENDED.length]} inset`,
+                      boxShadow: `0 0 0 2px ${playerColors[currentIdx % playerColors.length]} inset`,
                     }
                   : undefined
               }
@@ -142,13 +128,13 @@ export default function PiecePicker({ playerNames, onAllPicked }: Props) {
                 color={
                   isTaken
                     ? "#555"
-                    : PLAYER_COLORS_EXTENDED[
-                        currentIdx % PLAYER_COLORS_EXTENDED.length
+                    : playerColors[
+                        currentIdx % playerColors.length
                       ]
                 }
               />
               <span className="text-zinc-400 text-[10px] text-center leading-tight font-medium">
-                {PIECE_LABELS[pieceType]}
+                {PieceLabels[pieceType]}
               </span>
               {isTaken && (
                 <div className="absolute inset-0 flex items-center justify-center rounded-xl">

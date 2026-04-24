@@ -1,24 +1,10 @@
 import { useState, useEffect } from "react";
 import { gameService } from "../services/gameService";
-import type { TileData } from "../Interfaces/Interface";
+import type { TileData, Props } from "../Interfaces/Interface";
+import { colorHex  } from "../Constant/ColorHex";
 
-interface Props {
-  playerName: string;
-  isCurrentPlayer: boolean;
-  onUpdate: () => void; // refresh parent state after action
-  onClose: () => void;
-}
 
-const COLOR_HEX: Record<string, string> = {
-  Brown: "#78350f",
-  LightBlue: "#7dd3fc",
-  Pink: "#f472b6",
-  Orange: "#f97316",
-  Red: "#dc2626",
-  Yellow: "#facc15",
-  Green: "#16a34a",
-  DarkBlue: "#1e3a8a",
-};
+
 
 function HouseIcon({ count }: { count: number }) {
   return (
@@ -190,7 +176,7 @@ export default function PlayerPropertiesPanel({
                 >
                   <div
                     className="h-1.5 w-full"
-                    style={{ background: COLOR_HEX[color] ?? "#888" }}
+                    style={{ background: colorHex[color] ?? "#888" }}
                   />
 
                   <div className="p-3">

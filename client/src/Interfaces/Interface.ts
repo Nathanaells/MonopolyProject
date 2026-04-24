@@ -58,3 +58,23 @@ export interface SellResult {
   income: number;
   gameState: GameState;
 }
+
+
+export interface Props {
+  playerName: string;
+  isCurrentPlayer: boolean;
+  onUpdate: () => void;
+  onClose: () => void;
+}
+
+export interface DiceProps {
+  die1: number;
+  die2: number;
+  rolling: boolean;
+  onDone?: () => void;
+}
+
+export interface PlayerProps {
+  playerNames: string[];
+  onAllPicked: () => void;
+}

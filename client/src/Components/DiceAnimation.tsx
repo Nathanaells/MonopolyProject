@@ -1,11 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import type {DiceProps} from "../Interfaces/Interface"
 
-interface Props {
-  die1: number;
-  die2: number;
-  rolling: boolean;
-  onDone?: () => void;
-}
 
 const dotPosition: Record<number, Array<[number, number]>> = {
   1: [[50, 50]],
@@ -41,7 +36,7 @@ const dotPosition: Record<number, Array<[number, number]>> = {
   ],
 };
 
-function DieFace({
+function DiceFace({
   value,
   className = "",
 }: {
@@ -73,7 +68,7 @@ function DieFace({
   );
 }
 
-export default function DiceAnimation({ die1, die2, rolling, onDone }: Props) {
+export default function DiceAnimation({ die1, die2, rolling, onDone }: DiceProps) {
   const [display1, setDisplay1] = useState(die1);
   const [display2, setDisplay2] = useState(die2);
   const [shake, setShake] = useState(false);
@@ -110,10 +105,10 @@ export default function DiceAnimation({ die1, die2, rolling, onDone }: Props) {
   return (
     <div className="flex gap-4 items-center justify-center">
       <div className={shake ? "animate-dice-roll" : ""}>
-        <DieFace value={display1} />
+        <DiceFace value={display1} />
       </div>
       <div className={shake ? "animate-dice-roll animation-delay-100" : ""}>
-        <DieFace value={display2} />
+        <DiceFace value={display2} />
       </div>
 
       <style>{`
