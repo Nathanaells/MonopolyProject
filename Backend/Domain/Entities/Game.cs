@@ -50,14 +50,17 @@ public class Game
         _playerPiece = new Dictionary<IPlayer, IPiece>();
         _playerData = new Dictionary<IPlayer, List<IMoney>>();
 
-        var startTile = GetTileByType(TileType.StartTile);
+        ITile startTile = GetTileByType(TileType.StartTile);
         for (int i = 0; i < _players.Count; i++)
         {
-            var player = _players[i];
-            var piece = _pieces[i % _pieces.Count];
+            IPlayer player = _players[i];
+            IPiece piece = _pieces[i % _pieces.Count];
 
             _playerPiece[player] = piece;
-            _playerData[player] = new List<IMoney> { new Money(1500) };
+            _playerData[player] = new List<IMoney>
+            {
+                new Money(MoneyValue.fiveHundred + MoneyValue.fiveHundred + MoneyValue.fiveHundred),
+            };
             startTile.Pieces.Add(piece);
         }
     }
@@ -142,8 +145,8 @@ public class Game
 
         if (player.IsInJail)
         {
-            var jailDice1 = new Dice();
-            var jailDice2 = new Dice();
+            IDice jailDice1 = new Dice();
+            IDice jailDice2 = new Dice();
             int d1 = jailDice1.MaxRolled;
             int d2 = jailDice2.MaxRolled;
 

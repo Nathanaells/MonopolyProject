@@ -1,7 +1,6 @@
 namespace Backend.DTOs;
 
 using Backend.Domain.Enums;
-using Backend.Domain.Interfaces;
 
 public record StartGameRequestDTO(List<string> PlayerNames);
 
