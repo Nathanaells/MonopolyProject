@@ -17,7 +17,7 @@ public class Game
 
     private Dictionary<IPlayer, IPiece> _playerPiece;
     private Dictionary<IPlayer, List<IMoney>> _playerData;
-    private Dictionary<PieceType, IPlayer> _takenPieces = new();
+    private Dictionary<PieceType, IPlayer> _takenPieces;
 
     private readonly Random _random = new();
 
@@ -47,6 +47,7 @@ public class Game
         _pieces = pieces;
         _cards = cards;
 
+        _takenPieces = new Dictionary<PieceType, IPlayer>();
         _playerPiece = new Dictionary<IPlayer, IPiece>();
         _playerData = new Dictionary<IPlayer, List<IMoney>>();
 
@@ -80,7 +81,7 @@ public class Game
             throw new Exception("Player not found in this game.");
 
         if (
-            _playerPiece.TryGetValue(player, out var currentPiece)
+            _playerPiece.TryGetValue(player, out IPiece? currentPiece)
             && currentPiece.Type == pieceType
         )
         {
@@ -90,13 +91,13 @@ public class Game
         if (!IsPieceAvailable(pieceType))
             throw new Exception($"Piece {pieceType} sudah diambil oleh pemain lain.");
 
-        var newPiece =
+        IPiece newPiece =
             _pieces.FirstOrDefault(p => p.Type == pieceType)
             ?? throw new Exception($"Piece {pieceType} tidak ditemukan.");
 
-        if (_playerPiece.TryGetValue(player, out var oldPiece))
+        if (_playerPiece.TryGetValue(player, out IPiece? oldPiece))
         {
-            var currentTile = _board.Tiles.FirstOrDefault(t => t.Pieces.Contains(oldPiece));
+            ITile? currentTile = _board.Tiles.FirstOrDefault(t => t.Pieces.Contains(oldPiece));
             currentTile?.Pieces.Remove(oldPiece);
 
             var oldTakenEntry = _takenPieces.FirstOrDefault(kv => kv.Value.Equals(player));
@@ -109,7 +110,7 @@ public class Game
         _playerPiece[player] = newPiece;
         _takenPieces[newPiece.Type] = player;
 
-        var startTile = GetTileByType(TileType.StartTile);
+        ITile startTile = GetTileByType(TileType.StartTile);
         if (!_board.Tiles.Any(t => t.Pieces.Contains(newPiece)))
             startTile.Pieces.Add(newPiece);
     }
@@ -154,7 +155,7 @@ public class Game
             {
                 ReleaseFromJail(player);
                 MovePiece(player, d1 + d2);
-                var landedTileJail = GetCurrentTile(player);
+                ITile landedTileJail = GetCurrentTile(player);
 
                 HandleTileEffectsAfterMove(
                     player,
@@ -194,7 +195,10 @@ public class Game
                 if (player.JailTurnsRemaining <= 0)
                 {
                     if (GetPlayerBalance(player) >= 50)
-                        SubstractPlayerMoney(player, new Money(50));
+                        SubstractPlayerMoney(
+                            player,
+                            _money.First(m => m.Value == MoneyValue.fifty)
+                        );
                     ReleaseFromJail(player);
                 }
 
@@ -235,8 +239,8 @@ public class Game
             );
         }
 
-        var dice1 = new Dice();
-        var dice2 = new Dice();
+        IDice dice1 = new Dice();
+        IDice dice2 = new Dice();
         int roll1 = dice1.MaxRolled;
         int roll2 = dice2.MaxRolled;
         int diceTotal = roll1 + roll2;
@@ -266,7 +270,7 @@ public class Game
 
         MovePiece(player, diceTotal);
 
-        var landedTile = GetCurrentTile(player);
+        ITile landedTile = GetCurrentTile(player);
 
         HandleTileEffectsAfterMove(
             player,
@@ -344,20 +348,23 @@ public class Game
         }
 
         int move = step ?? HandleDiceRoll();
-        var currentTile = GetCurrentTile(player);
+        ITile currentTile = GetCurrentTile(player);
         int currentIndex = Array.IndexOf(_board.Tiles, currentTile);
         int count = _board.Tiles.Length;
         int newIndex = ((currentIndex + move) % count + count) % count;
 
+        //Money
+        int money = _money.First(m => m.Value == MoneyValue.twoHundred).Value;
+
         if (move > 0 && newIndex < currentIndex)
-            AddPlayerMoney(player, new Money(MoneyValue.twoHundred));
+            AddPlayerMoney(player, new Money(money));
 
         MovePieceToIndex(player, newIndex);
     }
 
     private void MovePieceTo(IPlayer player, ITile targetTile)
     {
-        var currentTile = GetCurrentTile(player);
+        ITile currentTile = GetCurrentTile(player);
         currentTile.Pieces.Remove(_playerPiece[player]);
         targetTile.Pieces.Add(_playerPiece[player]);
     }
@@ -403,14 +410,15 @@ public class Game
     {
         if (player == null)
             throw new Exception("Player cannot be null.");
-        if (!_playerPiece.TryGetValue(player, out var piece))
+
+        if (!_playerPiece.TryGetValue(player, out IPiece? piece))
             throw new Exception("Player does not have a piece assigned.");
 
-        var tile = _board.Tiles.FirstOrDefault(t => t.Pieces.Contains(piece));
+        ITile? tile = _board.Tiles.FirstOrDefault(t => t.Pieces.Contains(piece));
         if (tile != null)
             return tile;
 
-        var startTile = GetTileByType(TileType.StartTile);
+        ITile startTile = GetTileByType(TileType.StartTile);
         if (!startTile.Pieces.Contains(piece))
             startTile.Pieces.Add(piece);
 
@@ -724,17 +732,21 @@ public class Game
 
     public ICard DrawCard(TileType drawType)
     {
-        IEnumerable<ICard> candidateCards = drawType switch
-        {
-            TileType.DrawChance => _cards.Where(c => c is ChanceCard),
-            TileType.DrawCommunity => _cards.Where(c => c is CommunityCard),
-            _ => throw new Exception("Tile type is not a card tile."),
-        };
+        List<ICard> candidates = new List<ICard>();
 
-        var shuffled = candidateCards.OrderBy(_ => _random.Next()).ToList();
-        if (!shuffled.Any())
-            throw new Exception("No cards available.");
-        return shuffled.First();
+        foreach (ICard card in _cards)
+        {
+            if (drawType == TileType.DrawChance && card is ChanceCard)
+                candidates.Add(card);
+            else if (drawType == TileType.DrawCommunity && card is CommunityCard)
+                candidates.Add(card);
+        }
+
+        if (candidates.Count == 0)
+            return null;
+
+        ICard chosen = candidates[_random.Next(candidates.Count)];
+        return chosen;
     }
 
     public void ExecuteCard(ICard card, IPlayer player)
@@ -753,7 +765,7 @@ public class Game
         int houseCost = 40;
         int hotelCost = 115;
         int totalCost = 0;
-        foreach (var tile in _board.Tiles)
+        foreach (ITile tile in _board.Tiles)
         {
             if (tile.Owner != null && tile.Owner.Equals(player) && tile.Asset != null)
             {
@@ -796,7 +808,7 @@ public class Game
                 AddPlayerMoney(player, new Money(MoneyValue.hundred));
                 break;
             case CardBehaviour.Birthday:
-                foreach (var p in _players)
+                foreach (IPlayer p in _players)
                     if (!p.Equals(player))
                         TransferPlayerMoney(p, player, new Money(MoneyValue.ten));
                 break;
@@ -880,7 +892,7 @@ public class Game
                 MovePieceTo(player, GetTileByPropertyCity(PropertyCity.Boardwalk));
                 break;
             case CardBehaviour.ChairmanOfTheBoard:
-                foreach (var p in _players)
+                foreach (IPlayer p in _players)
                     if (!p.Equals(player))
                         TransferPlayerMoney(player, p, new Money(MoneyValue.fifty));
                 break;
@@ -915,6 +927,7 @@ public class Game
                     }
                 }
                 return null;
+
             case TileType.TaxTile:
             case TileType.PayTaxTile:
                 SubstractPlayerMoney(player, new Money(MoneyValue.hundred));
@@ -923,10 +936,14 @@ public class Game
                 SendPieceToJail(player);
                 return null;
             case TileType.DrawChance:
+                ICard chanceCard = DrawCard(tile.Type);
+                ExecuteCard(chanceCard, player);
+                return chanceCard;
             case TileType.DrawCommunity:
-                var card = DrawCard(tile.Type);
-                ExecuteCard(card, player);
-                return card;
+                ICard communityCard = DrawCard(tile.Type);
+                ExecuteCard(communityCard, player);
+                return communityCard;
+
             default:
                 return null;
         }
@@ -937,7 +954,8 @@ public class Game
 
     public IPlayer? GetWinnerOrNull()
     {
-        var activePlayers = _players.Where(p => !p.IsBankrupt).ToList();
+        List<IPlayer> activePlayers = _players.Where(p => !p.IsBankrupt).ToList();
+
         return activePlayers.Count == 1 ? activePlayers[0] : null;
     }
 
@@ -949,7 +967,7 @@ public class Game
 
     public bool CheckWinner()
     {
-        var winner = GetWinnerOrNull();
+        IPlayer? winner = GetWinnerOrNull();
         if (winner != null)
         {
             IsGameEnded?.Invoke(winner);

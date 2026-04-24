@@ -18,6 +18,6 @@ class Player : IPlayer
         IsInJail = false;
         IsBankrupt = false;
         JailFreeCardCount = 0;
-        JailTurnsRemaining = 3;
+        JailTurnsRemaining = 0;
     }
 }
