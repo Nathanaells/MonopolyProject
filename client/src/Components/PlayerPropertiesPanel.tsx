@@ -89,7 +89,7 @@ export default function PlayerPropertiesPanel({
     setActionLoading(city + "_sell");
     try {
       await gameService.sellProperty(playerName, city, true);
-      flash("💰 Properti dijual!");
+      flash("Properti dijual!");
       fetchProperties();
       onUpdate();
     } catch (e: any) {

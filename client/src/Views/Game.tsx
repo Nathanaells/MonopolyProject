@@ -8,39 +8,16 @@ import DiceAnimation from "../Components/DiceAnimation";
 import { usePieceAnimation } from "../Components/UsePieceAnimation";
 import { PieceComponents } from "../Components/MonopolyPieces";
 import PlayerPropertiesPanel from "../Components/PlayerPropertiesPanel";
-
-const PLAYER_COLORS = [
-  "bg-red-500",
-  "bg-blue-500",
-  "bg-yellow-400",
-  "bg-emerald-500",
-  "bg-purple-500",
-  "bg-pink-500",
-  "bg-cyan-500",
-  "bg-orange-500",
-];
-const PLAYER_DOTS = ["●", "■", "▲", "♦", "★", "◆", "⬟", "⬢"];
-const PLAYER_HEX = [
-  "#ef4444",
-  "#3b82f6",
-  "#eab308",
-  "#10b981",
-  "#a855f7",
-  "#ec4899",
-  "#06b6d4",
-  "#f97316",
-];
-
-const BOARD_SIZE = 11;
-const TILE_SIZE = 54;
-const TILE_GAP = 1;
-
-type PendingMove = {
-  playerName: string;
-  from: number;
-  to: number;
-  result: RollResult;
-};
+import GameOverPanel from "../Components/GameOverPanel";
+import {
+  PLAYER_COLORS,
+  PLAYER_DOTS,
+  PLAYER_HEX,
+  BOARD_SIZE,
+  TILE_SIZE,
+  TILE_GAP,
+} from "../Constant/PlayerAssets";
+import type { PendingMove } from "../Interfaces/Interface";
 
 export default function Game() {
   const playerNamesString = localStorage.getItem("playerNames");
@@ -490,8 +467,8 @@ export default function Game() {
           <div className="bg-zinc-800 rounded-xl p-3 border border-zinc-700">
             <div className="mb-3">
               <DiceAnimation
-                die1={diceRoll.dice1}
-                die2={diceRoll.dice2}
+                dice1={diceRoll.dice1}
+                dice2={diceRoll.dice2}
                 rolling={isDiceRolling}
                 onDone={handleDiceAnimationDone}
               />
@@ -575,6 +552,23 @@ export default function Game() {
           isCurrentPlayer
           onUpdate={refreshStateAndBoard}
           onClose={() => setPropertiesPlayer(null)}
+        />
+      )}
+
+      {gameState.isGameEnded && gameState.winner && (
+        <GameOverPanel
+          winner={gameState.winner}
+          players={gameState.players.map((p) => ({
+            name: p.name,
+            balance: p.balance,
+            properties: p.properties,
+            isBankrupt: p.isBankrupt,
+          }))}
+          onPlayAgain={() => {
+            localStorage.removeItem("playerNames");
+            localStorage.removeItem("playerPieces");
+            window.location.href = "/"; // atau navigate ke halaman lobby
+          }}
         />
       )}
     </div>

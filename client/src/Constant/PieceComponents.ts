@@ -1,6 +1,14 @@
-import { TopHatPiece, CarPiece, ScottieDogPiece, BattleshipPiece, HorsePiece, ThimblePiece, CannonPiece, WheelbarrowPiece } from "../Components/MonopolyPieces";
+import {
+  TopHatPiece,
+  CarPiece,
+  ScottieDogPiece,
+  BattleshipPiece,
+  HorsePiece,
+  ThimblePiece,
+  CannonPiece,
+  WheelbarrowPiece,
+} from "../Components/MonopolyPieces";
 import type { PieceSVGProps } from "../Interfaces/Interface";
-
 
 export const PieceComponents: Record<string, React.FC<PieceSVGProps>> = {
   Tophat: TopHatPiece,

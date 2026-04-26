@@ -1,5 +1,5 @@
 import React from "react";
-import type {PieceSVGProps} from "../Interfaces/Interface"
+import type { PieceSVGProps } from "../Interfaces/Interface";
 
 export const TopHatPiece: React.FC<PieceSVGProps> = ({
   color = "currentColor",
@@ -315,7 +315,6 @@ export const WheelbarrowPiece: React.FC<PieceSVGProps> = ({
     />
   </svg>
 );
-
 
 export const PieceComponents: Record<string, React.FC<PieceSVGProps>> = {
   Tophat: TopHatPiece,

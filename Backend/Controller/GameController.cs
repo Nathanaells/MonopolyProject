@@ -282,6 +282,8 @@ public class GameController : ControllerBase, IGameController
 
         GameResultDTO<bool> executeResult = _activeGame.ExecuteCard(card, _activeGame.CurrentPlayer);
 
+      
+
         if (!executeResult.IsSuccess)
         {
             return BadRequest(executeResult.Error);

@@ -22,13 +22,6 @@ public class Game
     public event Action<IPlayer, IPiece>? PlayerSentToJail;
     public event Action<IPlayer>? PlayerBankrupt;
     public event Action<IPlayer>? IsGameEnded;
-
-    public IPlayer CurrentPlayer => _players[_currentPlayerIndex];
-    public IReadOnlyList<IPlayer> Players => _players;
-    public int CurrentPlayerIndex => _currentPlayerIndex;
-    public List<ICard> Cards => _cards;
-    public List<IPiece> Pieces => _pieces;
-    public bool GameEnded => _gameEnded;
     public GamePhase Phase { get; private set; } = GamePhase.WaitingRoll;
 
     public Game(
@@ -66,56 +59,61 @@ public class Game
 
     public IBoard Board => _board;
 
+    public IPlayer CurrentPlayer => _players[_currentPlayerIndex];
+    public List<IPlayer> Players => _players;
+    public int CurrentPlayerIndex => _currentPlayerIndex;
+    public List<ICard> Cards => _cards;
+    public List<IPiece> Pieces => _pieces;
+    public bool GameEnded => _gameEnded;
+
+
     public bool IsPieceAvailable(PieceType pieceType)
     {
-        return !_takenPieces.ContainsKey(pieceType);
+        bool isAvailable = !_takenPieces.ContainsKey(pieceType);
+        return isAvailable;
     }
 
     public GameResultDTO<bool> AssignPieceToPlayer(IPlayer player, PieceType pieceType)
     {
         if (player == null)
         {
-            return GameResultDTO<bool>.Failure("Player tidak boleh null.");
+            GameResultDTO<bool> nullPlayerResult = GameResultDTO<bool>.Failure("Player tidak boleh null.");
+            return nullPlayerResult;
         }
 
         if (!_players.Contains(player))
         {
-            return GameResultDTO<bool>.Failure("Player tidak ditemukan dalam game ini.");
+            GameResultDTO<bool> notFoundResult = GameResultDTO<bool>.Failure("Player tidak ditemukan dalam game ini.");
+            return notFoundResult;
         }
 
-        if (
-            _playerPiece.TryGetValue(player, out IPiece? currentPiece)
-            && currentPiece.Type == pieceType
-        )
+        if (_playerPiece.TryGetValue(player, out IPiece? currentPiece) && currentPiece.Type == pieceType)
         {
-            return GameResultDTO<bool>.Success(true);
+            GameResultDTO<bool> alreadyAssignedResult = GameResultDTO<bool>.Success(true);
+            return alreadyAssignedResult;
         }
 
         if (!IsPieceAvailable(pieceType))
         {
-            return GameResultDTO<bool>.Failure($"Piece {pieceType} sudah diambil oleh pemain lain.");
+            GameResultDTO<bool> takenResult = GameResultDTO<bool>.Failure($"Piece {pieceType} sudah diambil oleh pemain lain.");
+            return takenResult;
         }
 
         IPiece? newPiece = _pieces.FirstOrDefault(p => p.Type == pieceType);
-
         if (newPiece == null)
         {
-            return GameResultDTO<bool>.Failure($"Piece {pieceType} tidak ditemukan.");
+            GameResultDTO<bool> pieceNotFoundResult = GameResultDTO<bool>.Failure($"Piece {pieceType} tidak ditemukan.");
+            return pieceNotFoundResult;
         }
 
         if (_playerPiece.TryGetValue(player, out IPiece? oldPiece))
         {
             ITile? currentTile = _board.Tiles.FirstOrDefault(t => t.Pieces.Contains(oldPiece));
-            if (currentTile != null)
-            {
-                currentTile.Pieces.Remove(oldPiece);
-            }
+            currentTile?.Pieces.Remove(oldPiece);
 
             var oldTakenEntry = _takenPieces.FirstOrDefault(kv => kv.Value.Equals(player));
             if (!oldTakenEntry.Equals(default(KeyValuePair<PieceType, IPlayer>)))
-            {
                 _takenPieces.Remove(oldTakenEntry.Key);
-            }
         }
 
         _playerPiece[player] = newPiece;
@@ -123,48 +121,46 @@ public class Game
 
         ITile startTile = GetTileByType(TileType.StartTile);
         if (!_board.Tiles.Any(t => t.Pieces.Contains(newPiece)))
-        {
             startTile.Pieces.Add(newPiece);
-        }
 
-        return GameResultDTO<bool>.Success(true);
+        GameResultDTO<bool> successResult = GameResultDTO<bool>.Success(true);
+        return successResult;
     }
 
     public GameResultDTO<IPiece> GetPiece(IPlayer player)
     {
         if (player == null)
         {
-            return GameResultDTO<IPiece>.Failure("Player tidak boleh null.");
+            GameResultDTO<IPiece> nullResult = GameResultDTO<IPiece>.Failure("Player tidak boleh null.");
+            return nullResult;
         }
 
         if (_playerPiece.ContainsKey(player))
         {
-            return GameResultDTO<IPiece>.Success(_playerPiece[player]);
+            GameResultDTO<IPiece> pieceResult = GameResultDTO<IPiece>.Success(_playerPiece[player]);
+            return pieceResult;
         }
 
-        return GameResultDTO<IPiece>.Failure("Player tidak memiliki piece yang di-assign.");
+        GameResultDTO<IPiece> notFoundResult = GameResultDTO<IPiece>.Failure("Player tidak memiliki piece yang di-assign.");
+        return notFoundResult;
     }
 
     public void NextPlayer()
     {
-        if (_gameEnded)
-        {
-            return;
-        }
+        if (_gameEnded) return;
 
         do
         {
             _currentPlayerIndex = (_currentPlayerIndex + 1) % _players.Count;
-        } while (
-            _players[_currentPlayerIndex].IsBankrupt && _players.Count(p => !p.IsBankrupt) > 1
-        );
+        } while (_players[_currentPlayerIndex].IsBankrupt && _players.Count(p => !p.IsBankrupt) > 1);
     }
 
     public GameResultDTO<RollTurnResult> RollTurn()
     {
         if (Phase != GamePhase.WaitingRoll)
         {
-            return GameResultDTO<RollTurnResult>.Failure("Bukan fase yang tepat untuk melempar dadu.");
+            GameResultDTO<RollTurnResult> wrongPhaseResult = GameResultDTO<RollTurnResult>.Failure("Bukan fase yang tepat untuk melempar dadu.");
+            return wrongPhaseResult;
         }
 
         IPlayer player = CurrentPlayer;
@@ -176,31 +172,23 @@ public class Game
 
             if (firstDice == secondDice)
             {
-                ReleaseFromJail(player);
                 MovePiece(player, firstDice + secondDice);
+                ReleaseFromJail(player);
 
                 GameResultDTO<ITile?> jailTileResult = GetCurrentTile(player);
                 if (!jailTileResult.IsSuccess || jailTileResult.Data == null)
                 {
-                    return GameResultDTO<RollTurnResult>.Failure("Gagal mendapatkan tile saat ini setelah keluar penjara.");
+                    GameResultDTO<RollTurnResult> failResult = GameResultDTO<RollTurnResult>.Failure("Gagal mendapatkan tile saat ini setelah keluar penjara.");
+                    return failResult;
                 }
 
                 ITile landedTileJail = jailTileResult.Data;
-
-                HandleTileEffectsAfterMove(
-                    player,
-                    landedTileJail,
-                    out ICard? jailCard,
-                    out bool requiresBuyJail
-                );
+                HandleTileEffectsAfterMove(player, landedTileJail, out ICard? jailCard, out bool requiresBuyJail);
 
                 if (!requiresBuyJail)
                 {
                     EndGame();
-                    if (!GameEnded)
-                    {
-                        NextPlayer();
-                    }
+                    if (!GameEnded) NextPlayer();
                     Phase = GamePhase.WaitingRoll;
                 }
                 else
@@ -208,7 +196,7 @@ public class Game
                     Phase = GamePhase.WaitingBuyDecision;
                 }
 
-                return GameResultDTO<RollTurnResult>.Success(new RollTurnResult(
+                RollTurnResult jailReleasedData = new RollTurnResult(
                     DiceTotal: firstDice + secondDice,
                     Dice1: firstDice,
                     Dice2: secondDice,
@@ -218,7 +206,9 @@ public class Game
                     RequiresBuyDecision: requiresBuyJail,
                     DrawnCard: jailCard,
                     JailRollResult: JailRollResult.Released
-                ));
+                );
+                GameResultDTO<RollTurnResult> jailReleasedResult = GameResultDTO<RollTurnResult>.Success(jailReleasedData);
+                return jailReleasedResult;
             }
             else
             {
@@ -230,21 +220,16 @@ public class Game
                     GameResultDTO<int> balanceResult = GetPlayerBalance(player);
 
                     if (fiftyMoney != null && balanceResult.IsSuccess && balanceResult.Data >= MoneyValue.fifty)
-                    {
                         SubstractPlayerMoney(player, fiftyMoney);
-                    }
 
                     ReleaseFromJail(player);
                 }
 
                 EndGame();
-                if (!GameEnded)
-                {
-                    NextPlayer();
-                }
+                if (!GameEnded) NextPlayer();
                 Phase = GamePhase.WaitingRoll;
 
-                return GameResultDTO<RollTurnResult>.Success(new RollTurnResult(
+                RollTurnResult jailStayedData = new RollTurnResult(
                     DiceTotal: firstDice + secondDice,
                     Dice1: firstDice,
                     Dice2: secondDice,
@@ -254,7 +239,9 @@ public class Game
                     RequiresBuyDecision: false,
                     DrawnCard: null,
                     JailRollResult: JailRollResult.StayedInJail
-                ));
+                );
+                GameResultDTO<RollTurnResult> jailStayedResult = GameResultDTO<RollTurnResult>.Success(jailStayedData);
+                return jailStayedResult;
             }
         }
 
@@ -262,22 +249,19 @@ public class Game
         {
             RemovePlayer(player);
             EndGame();
-            if (!GameEnded)
-            {
-                NextPlayer();
-            }
+            if (!GameEnded) NextPlayer();
 
-            return GameResultDTO<RollTurnResult>.Success(new RollTurnResult(
-                DiceTotal: 0,
-                Dice1: 0,
-                Dice2: 0,
+            RollTurnResult bankruptData = new RollTurnResult(
+                DiceTotal: 0, Dice1: 0, Dice2: 0,
                 LandedTileType: "None",
                 LandedProperty: null,
                 LandedTile: null,
                 RequiresBuyDecision: false,
                 DrawnCard: null,
                 JailRollResult: JailRollResult.None
-            ));
+            );
+            GameResultDTO<RollTurnResult> bankruptResult = GameResultDTO<RollTurnResult>.Success(bankruptData);
+            return bankruptResult;
         }
 
         int firstRoll = new Dice().MaxRolled;
@@ -285,22 +269,17 @@ public class Game
         int diceTotal = firstRoll + secondRoll;
 
         if (firstRoll == secondRoll)
-        {
             player.DoubleRoll++;
-        }
 
         if (player.DoubleRoll >= 3)
         {
             player.DoubleRoll = 0;
             SendPieceToJail(player);
             EndGame();
-            if (!GameEnded)
-            {
-                NextPlayer();
-            }
+            if (!GameEnded) NextPlayer();
             Phase = GamePhase.WaitingRoll;
 
-            return GameResultDTO<RollTurnResult>.Success(new RollTurnResult(
+            RollTurnResult sentToJailData = new RollTurnResult(
                 DiceTotal: diceTotal,
                 Dice1: firstRoll,
                 Dice2: secondRoll,
@@ -310,35 +289,33 @@ public class Game
                 RequiresBuyDecision: false,
                 DrawnCard: null,
                 JailRollResult: JailRollResult.None
-            ));
+            );
+            GameResultDTO<RollTurnResult> sentToJailResult = GameResultDTO<RollTurnResult>.Success(sentToJailData);
+            return sentToJailResult;
         }
 
         GameResultDTO<bool> moveResult = MovePiece(player, diceTotal);
         if (!moveResult.IsSuccess)
         {
-            return GameResultDTO<RollTurnResult>.Failure(moveResult.Error!);
+            GameResultDTO<RollTurnResult> moveFailResult = GameResultDTO<RollTurnResult>.Failure(moveResult.Error!);
+            return moveFailResult;
         }
 
         GameResultDTO<ITile?> currentTileResult = GetCurrentTile(player);
         if (!currentTileResult.IsSuccess || currentTileResult.Data == null)
         {
-            return GameResultDTO<RollTurnResult>.Failure("Gagal mendapatkan tile saat ini setelah bergerak.");
+            GameResultDTO<RollTurnResult> tileFailResult = GameResultDTO<RollTurnResult>.Failure("Gagal mendapatkan tile saat ini setelah bergerak.");
+            return tileFailResult;
         }
 
         ITile landedTile = currentTileResult.Data;
-
-        HandleTileEffectsAfterMove(
-            player,
-            landedTile,
-            out ICard? card,
-            out bool requiresBuyDecision
-        );
+        HandleTileEffectsAfterMove(player, landedTile, out ICard? card, out bool requiresBuyDecision);
 
         if (requiresBuyDecision)
         {
             Phase = GamePhase.WaitingBuyDecision;
 
-            return GameResultDTO<RollTurnResult>.Success(new RollTurnResult(
+            RollTurnResult buyDecisionData = new RollTurnResult(
                 DiceTotal: diceTotal,
                 Dice1: firstRoll,
                 Dice2: secondRoll,
@@ -348,17 +325,16 @@ public class Game
                 RequiresBuyDecision: true,
                 DrawnCard: null,
                 JailRollResult: JailRollResult.None
-            ));
+            );
+            GameResultDTO<RollTurnResult> buyDecisionResult = GameResultDTO<RollTurnResult>.Success(buyDecisionData);
+            return buyDecisionResult;
         }
 
         EndGame();
-        if (!GameEnded)
-        {
-            NextPlayer();
-        }
+        if (!GameEnded) NextPlayer();
         Phase = GamePhase.WaitingRoll;
 
-        return GameResultDTO<RollTurnResult>.Success(new RollTurnResult(
+        RollTurnResult normalData = new RollTurnResult(
             DiceTotal: diceTotal,
             Dice1: firstRoll,
             Dice2: secondRoll,
@@ -368,7 +344,9 @@ public class Game
             RequiresBuyDecision: false,
             DrawnCard: card,
             JailRollResult: JailRollResult.None
-        ));
+        );
+        GameResultDTO<RollTurnResult> normalResult = GameResultDTO<RollTurnResult>.Success(normalData);
+        return normalResult;
     }
 
     private void HandleTileEffectsAfterMove(
@@ -395,31 +373,41 @@ public class Game
 
         GameResultDTO<ICard?> tileResult = ExecuteTile(tile, player);
         if (tileResult.IsSuccess)
-        {
             drawnCard = tileResult.Data;
-        }
     }
 
+    // Bergerak N langkah dari posisi saat ini, dengan logika wrap-around dan passing Go
     public GameResultDTO<bool> MovePiece(IPlayer player, int? step = null)
     {
         if (player == null)
         {
-            return GameResultDTO<bool>.Failure("Player tidak boleh null.");
+            GameResultDTO<bool> nullResult = GameResultDTO<bool>.Failure("Player tidak boleh null.");
+            return nullResult;
         }
 
         if (player.DoubleRoll >= 3)
         {
             SendPieceToJail(player);
-            return GameResultDTO<bool>.Success(true);
+            GameResultDTO<bool> jailResult = GameResultDTO<bool>.Success(true);
+            return jailResult;
         }
 
-        GameResultDTO<int> diceResult = HandleDiceRoll();
-        int move = step ?? diceResult.Data;
+        int move;
+        if (step.HasValue)
+        {
+            move = step.Value;
+        }
+        else
+        {
+            GameResultDTO<int> diceResult = HandleDiceRoll();
+            move = diceResult.Data;
+        }
 
         GameResultDTO<ITile?> currentTileResult = GetCurrentTile(player);
         if (!currentTileResult.IsSuccess || currentTileResult.Data == null)
         {
-            return GameResultDTO<bool>.Failure("Gagal mendapatkan tile saat ini.");
+            GameResultDTO<bool> tileFailResult = GameResultDTO<bool>.Failure("Gagal mendapatkan tile saat ini.");
+            return tileFailResult;
         }
 
         ITile currentTile = currentTileResult.Data;
@@ -431,40 +419,30 @@ public class Game
         {
             IMoney? twoHundredMoney = _money.FirstOrDefault(m => m.Value == MoneyValue.twoHundred);
             if (twoHundredMoney != null)
-            {
                 AddPlayerMoney(player, new Money(twoHundredMoney.Value));
-            }
         }
 
-        MovePieceToIndex(player, newIndex);
-        return GameResultDTO<bool>.Success(true);
+        MovePieceTo(player, _board.Tiles[newIndex]);
+
+        GameResultDTO<bool> successResult = GameResultDTO<bool>.Success(true);
+        return successResult;
     }
 
+    // Teleport langsung ke tile tertentu (kartu, jail, dll)
     private void MovePieceTo(IPlayer player, ITile targetTile)
     {
         GameResultDTO<ITile?> currentTileResult = GetCurrentTile(player);
-        if (!currentTileResult.IsSuccess || currentTileResult.Data == null)
-        {
-            return;
-        }
+        if (!currentTileResult.IsSuccess || currentTileResult.Data == null) return;
 
         ITile currentTile = currentTileResult.Data;
         currentTile.Pieces.Remove(_playerPiece[player]);
         targetTile.Pieces.Add(_playerPiece[player]);
     }
 
-    private void MovePieceToIndex(IPlayer player, int targetIndex)
-    {
-        MovePieceTo(player, _board.Tiles[targetIndex]);
-    }
-
     private void MoveToNearestUtility(IPlayer player)
     {
         GameResultDTO<ITile?> currentTileResult = GetCurrentTile(player);
-        if (!currentTileResult.IsSuccess || currentTileResult.Data == null)
-        {
-            return;
-        }
+        if (!currentTileResult.IsSuccess || currentTileResult.Data == null) return;
 
         int currentIndex = Array.IndexOf(_board.Tiles, currentTileResult.Data);
         int count = _board.Tiles.Length;
@@ -472,7 +450,7 @@ public class Game
         for (int i = 1; i <= count; i++)
         {
             int index = (currentIndex + i) % count;
-            if (_board.Tiles[index] is ITile tile && tile.Type == TileType.UtilityTile)
+            if (_board.Tiles[index].Type == TileType.UtilityTile)
             {
                 MovePieceTo(player, _board.Tiles[index]);
                 break;
@@ -483,10 +461,7 @@ public class Game
     private void MoveToNearestRailroad(IPlayer player)
     {
         GameResultDTO<ITile?> currentTileResult = GetCurrentTile(player);
-        if (!currentTileResult.IsSuccess || currentTileResult.Data == null)
-        {
-            return;
-        }
+        if (!currentTileResult.IsSuccess || currentTileResult.Data == null) return;
 
         int currentIndex = Array.IndexOf(_board.Tiles, currentTileResult.Data);
         int count = _board.Tiles.Length;
@@ -494,7 +469,7 @@ public class Game
         for (int i = 1; i <= count; i++)
         {
             int index = (currentIndex + i) % count;
-            if (_board.Tiles[index] is ITile tile && tile.Type == TileType.RailroadTile)
+            if (_board.Tiles[index].Type == TileType.RailroadTile)
             {
                 MovePieceTo(player, _board.Tiles[index]);
                 break;
@@ -504,63 +479,67 @@ public class Game
 
     private ITile GetTileByType(TileType type)
     {
-        return _board.Tiles.First(t => t.Type == type);
+        ITile tile = _board.Tiles.First(t => t.Type == type);
+        return tile;
     }
 
     public GameResultDTO<ITile?> GetCurrentTile(IPlayer player)
     {
         if (player == null)
         {
-            return GameResultDTO<ITile?>.Failure("Player tidak boleh null.");
+            GameResultDTO<ITile?> nullResult = GameResultDTO<ITile?>.Failure("Player tidak boleh null.");
+            return nullResult;
         }
 
         if (!_playerPiece.TryGetValue(player, out IPiece? piece))
         {
-            return GameResultDTO<ITile?>.Failure("Player tidak memiliki piece yang di-assign.");
+            GameResultDTO<ITile?> noPieceResult = GameResultDTO<ITile?>.Failure("Player tidak memiliki piece yang di-assign.");
+            return noPieceResult;
         }
 
         ITile? tile = _board.Tiles.FirstOrDefault(t => t.Pieces.Contains(piece));
-
         if (tile != null)
         {
-            return GameResultDTO<ITile?>.Success(tile);
+            GameResultDTO<ITile?> foundResult = GameResultDTO<ITile?>.Success(tile);
+            return foundResult;
         }
 
         ITile startTile = GetTileByType(TileType.StartTile);
-
         if (!startTile.Pieces.Contains(piece))
-        {
             startTile.Pieces.Add(piece);
-        }
 
-        return GameResultDTO<ITile?>.Success(startTile);
+        GameResultDTO<ITile?> startResult = GameResultDTO<ITile?>.Success(startTile);
+        return startResult;
     }
 
     private ITile GetTileByPropertyCity(PropertyCity city)
     {
-        return _board.Tiles.First(t => t.Asset != null && t.Asset.City.PropertyCity == city);
+        ITile tile = _board.Tiles.First(t => t.Asset != null && t.Asset.City.PropertyCity == city);
+        return tile;
     }
 
     public ITile GetTileByCity(PropertyCity city)
     {
-        return GetTileByPropertyCity(city);
+        ITile tile = GetTileByPropertyCity(city);
+        return tile;
     }
 
     public GameResultDTO<bool> SendPieceToJail(IPlayer player)
     {
         if (player == null)
         {
-            return GameResultDTO<bool>.Failure("Player tidak boleh null.");
+            GameResultDTO<bool> nullResult = GameResultDTO<bool>.Failure("Player tidak boleh null.");
+            return nullResult;
         }
 
         GameResultDTO<ITile?> currentTileResult = GetCurrentTile(player);
         if (!currentTileResult.IsSuccess || currentTileResult.Data == null)
         {
-            return GameResultDTO<bool>.Failure("Gagal mendapatkan tile saat ini.");
+            GameResultDTO<bool> tileFailResult = GameResultDTO<bool>.Failure("Gagal mendapatkan tile saat ini.");
+            return tileFailResult;
         }
 
-        ITile currentTile = currentTileResult.Data;
-        currentTile.Pieces.Remove(_playerPiece[player]);
+        currentTileResult.Data.Pieces.Remove(_playerPiece[player]);
 
         ITile jailTile = GetTileByType(TileType.JailTile);
         jailTile.Pieces.Add(_playerPiece[player]);
@@ -568,21 +547,27 @@ public class Game
         player.JailTurnsRemaining = 3;
 
         PlayerSentToJail?.Invoke(player, _playerPiece[player]);
-        return GameResultDTO<bool>.Success(true);
+
+        GameResultDTO<bool> successResult = GameResultDTO<bool>.Success(true);
+
+        return successResult;
     }
 
     public GameResultDTO<bool> ReleaseFromJail(IPlayer player)
     {
         if (player == null)
         {
-            return GameResultDTO<bool>.Failure("Player tidak boleh null.");
+            GameResultDTO<bool> nullResult = GameResultDTO<bool>.Failure("Player tidak boleh null.");
+            return nullResult;
         }
 
         ITile jailTile = GetTileByType(TileType.JailTile);
         jailTile.Pieces.Remove(_playerPiece[player]);
         player.IsInJail = false;
         player.JailTurnsRemaining = 0;
-        return GameResultDTO<bool>.Success(true);
+
+        GameResultDTO<bool> successResult = GameResultDTO<bool>.Success(true);
+        return successResult;
     }
 
     public GameResultDTO<int> HandleDiceRoll(IDice? firstDice = null, IDice? secondDice = null)
@@ -591,61 +576,63 @@ public class Game
         IDice dice2 = secondDice ?? new Dice();
 
         if (dice1.MaxRolled == dice2.MaxRolled)
-        {
             CurrentPlayer.DoubleRoll++;
-        }
 
-        return GameResultDTO<int>.Success(dice1.MaxRolled + dice2.MaxRolled);
+        int total = dice1.MaxRolled + dice2.MaxRolled;
+        GameResultDTO<int> result = GameResultDTO<int>.Success(total);
+        return result;
     }
 
     public bool CheckBankruptcy(IPlayer player)
     {
-        return player.IsBankrupt;
+        bool isBankrupt = player.IsBankrupt;
+        return isBankrupt;
     }
 
     public bool CheckPlayerJailStatus(IPlayer player)
     {
-        if (player == null)
-        {
-            return false;
-        }
-
-        return player.IsInJail;
+        bool isInJail = player?.IsInJail ?? false;
+        return isInJail;
     }
 
     private bool IsOnOwnedProperty(ITile tile)
     {
-        return tile.Owner != null;
+        bool isOwned = tile.Owner != null;
+        return isOwned;
     }
 
     public GameResultDTO<bool> RemovePlayer(IPlayer player)
     {
         if (player == null)
         {
-            return GameResultDTO<bool>.Failure("Player tidak boleh null.");
+            GameResultDTO<bool> nullResult = GameResultDTO<bool>.Failure("Player tidak boleh null.");
+            return nullResult;
         }
 
         _players.Remove(player);
         _playerPiece.Remove(player);
         _playerData.Remove(player);
-        return GameResultDTO<bool>.Success(true);
+
+        GameResultDTO<bool> successResult = GameResultDTO<bool>.Success(true);
+        return successResult;
     }
 
     public GameResultDTO<bool> SubstractPlayerMoney(IPlayer player, IMoney money)
     {
         if (player == null)
         {
-            return GameResultDTO<bool>.Failure("Player tidak boleh null.");
+            GameResultDTO<bool> nullPlayerResult = GameResultDTO<bool>.Failure("Player tidak boleh null.");
+            return nullPlayerResult;
         }
-
         if (money == null)
         {
-            return GameResultDTO<bool>.Failure("Money tidak boleh null.");
+            GameResultDTO<bool> nullMoneyResult = GameResultDTO<bool>.Failure("Money tidak boleh null.");
+            return nullMoneyResult;
         }
-
-        if (!_playerData.ContainsKey(player) || _playerData[player] == null)
+        if (!_playerData.ContainsKey(player))
         {
-            return GameResultDTO<bool>.Failure("Data player tidak ditemukan.");
+            GameResultDTO<bool> notFoundResult = GameResultDTO<bool>.Failure("Data player tidak ditemukan.");
+            return notFoundResult;
         }
 
         int currentMoney = _playerData[player].Sum(m => m.Value);
@@ -653,95 +640,111 @@ public class Game
         {
             player.IsBankrupt = true;
             PlayerBankrupt?.Invoke(player);
-            return GameResultDTO<bool>.Failure($"Uang tidak cukup. Saldo saat ini: {currentMoney}, dibutuhkan: {money.Value}.");
+            GameResultDTO<bool> insufficientResult = GameResultDTO<bool>.Failure($"Uang tidak cukup. Saldo saat ini: {currentMoney}, dibutuhkan: {money.Value}.");
+            return insufficientResult;
         }
 
         _playerData[player].Add(new Money(-money.Value));
-        return GameResultDTO<bool>.Success(true);
+
+        GameResultDTO<bool> successResult = GameResultDTO<bool>.Success(true);
+        return successResult;
     }
 
     public GameResultDTO<bool> TransferPlayerMoney(IPlayer from, IPlayer to, IMoney money)
     {
         if (from == null || to == null)
         {
-            return GameResultDTO<bool>.Failure("Player tidak boleh null.");
+            GameResultDTO<bool> nullResult = GameResultDTO<bool>.Failure("Player tidak boleh null.");
+            return nullResult;
         }
-
         if (money == null)
         {
-            return GameResultDTO<bool>.Failure("Money tidak boleh null.");
+            GameResultDTO<bool> nullMoneyResult = GameResultDTO<bool>.Failure("Money tidak boleh null.");
+            return nullMoneyResult;
         }
-
         if (!_playerData.ContainsKey(from) || !_playerData.ContainsKey(to))
         {
-            return GameResultDTO<bool>.Failure("Data player tidak ditemukan.");
+            GameResultDTO<bool> notFoundResult = GameResultDTO<bool>.Failure("Data player tidak ditemukan.");
+            return notFoundResult;
         }
 
         int fromMoney = _playerData[from].Sum(m => m.Value);
         if (fromMoney < money.Value)
         {
-            return GameResultDTO<bool>.Failure($"Uang tidak cukup untuk transfer. Saldo {from.Name}: {fromMoney}, dibutuhkan: {money.Value}.");
+            GameResultDTO<bool> insufficientResult = GameResultDTO<bool>.Failure($"Uang tidak cukup untuk transfer. Saldo {from.Name}: {fromMoney}, dibutuhkan: {money.Value}.");
+            return insufficientResult;
         }
 
         _playerData[from].Add(new Money(-money.Value));
         _playerData[to].Add(new Money(money.Value));
-        return GameResultDTO<bool>.Success(true);
+
+        GameResultDTO<bool> successResult = GameResultDTO<bool>.Success(true);
+        return successResult;
     }
 
     public GameResultDTO<bool> AddPlayerMoney(IPlayer player, IMoney money)
     {
         if (player == null)
         {
-            return GameResultDTO<bool>.Failure("Player tidak boleh null.");
+            GameResultDTO<bool> nullPlayerResult = GameResultDTO<bool>.Failure("Player tidak boleh null.");
+            return nullPlayerResult;
         }
-
         if (money == null)
         {
-            return GameResultDTO<bool>.Failure("Money tidak boleh null.");
+            GameResultDTO<bool> nullMoneyResult = GameResultDTO<bool>.Failure("Money tidak boleh null.");
+            return nullMoneyResult;
         }
-
-        if (!_playerData.ContainsKey(player) || _playerData[player] == null)
+        if (!_playerData.ContainsKey(player))
         {
-            return GameResultDTO<bool>.Failure("Data player tidak ditemukan.");
+            GameResultDTO<bool> notFoundResult = GameResultDTO<bool>.Failure("Data player tidak ditemukan.");
+            return notFoundResult;
         }
 
         _playerData[player].Add(new Money(money.Value));
-        return GameResultDTO<bool>.Success(true);
+
+        GameResultDTO<bool> successResult = GameResultDTO<bool>.Success(true);
+        return successResult;
     }
 
     public GameResultDTO<int> GetPlayerBalance(IPlayer player)
     {
         if (player == null)
         {
-            return GameResultDTO<int>.Failure("Player tidak boleh null.");
+            GameResultDTO<int> nullResult = GameResultDTO<int>.Failure("Player tidak boleh null.");
+            return nullResult;
         }
-
         if (!_playerData.ContainsKey(player))
         {
-            return GameResultDTO<int>.Failure("Data player tidak ditemukan.");
+            GameResultDTO<int> notFoundResult = GameResultDTO<int>.Failure("Data player tidak ditemukan.");
+            return notFoundResult;
         }
 
-        return GameResultDTO<int>.Success(_playerData[player].Sum(m => m.Value));
+        int balance = _playerData[player].Sum(m => m.Value);
+        GameResultDTO<int> balanceResult = GameResultDTO<int>.Success(balance);
+        return balanceResult;
     }
 
     public GameResultDTO<bool> AttemptBuyCurrentProperty(IPlayer player, bool wantsToBuy)
     {
         if (!wantsToBuy)
         {
-            return GameResultDTO<bool>.Success(false);
+            GameResultDTO<bool> skipResult = GameResultDTO<bool>.Success(false);
+            return skipResult;
         }
 
         GameResultDTO<ITile?> tileResult = GetCurrentTile(player);
         if (!tileResult.IsSuccess || tileResult.Data == null)
         {
-            return GameResultDTO<bool>.Failure("Gagal mendapatkan tile saat ini.");
+            GameResultDTO<bool> tileFailResult = GameResultDTO<bool>.Failure("Gagal mendapatkan tile saat ini.");
+            return tileFailResult;
         }
 
         ITile tile = tileResult.Data;
 
         if (!IsPropertyAvailable(tile))
         {
-            return GameResultDTO<bool>.Failure("Properti ini tidak tersedia untuk dibeli.");
+            GameResultDTO<bool> unavailableResult = GameResultDTO<bool>.Failure("Properti ini tidak tersedia untuk dibeli.");
+            return unavailableResult;
         }
 
         int price = tile.Asset!.Price.Value;
@@ -749,76 +752,81 @@ public class Game
         GameResultDTO<int> balanceResult = GetPlayerBalance(player);
         if (!balanceResult.IsSuccess)
         {
-            return GameResultDTO<bool>.Failure(balanceResult.Error!);
+            GameResultDTO<bool> balanceFailResult = GameResultDTO<bool>.Failure(balanceResult.Error!);
+            return balanceFailResult;
         }
 
         if (balanceResult.Data < price)
         {
-            return GameResultDTO<bool>.Failure($"Uang tidak cukup untuk membeli properti. Saldo: {balanceResult.Data}, harga: {price}.");
+            GameResultDTO<bool> insufficientResult = GameResultDTO<bool>.Failure($"Uang tidak cukup untuk membeli properti. Saldo: {balanceResult.Data}, harga: {price}.");
+            return insufficientResult;
         }
 
         GameResultDTO<bool> subtractResult = SubstractPlayerMoney(player, new Money(price));
         if (!subtractResult.IsSuccess)
         {
-            return GameResultDTO<bool>.Failure(subtractResult.Error!);
+            GameResultDTO<bool> subtractFailResult = GameResultDTO<bool>.Failure(subtractResult.Error!);
+            return subtractFailResult;
         }
 
         tile.Owner = player;
-        return GameResultDTO<bool>.Success(true);
+
+        GameResultDTO<bool> successResult = GameResultDTO<bool>.Success(true);
+        return successResult;
     }
 
     public GameResultDTO<bool> HandleBuyDecision(bool wantsToBuy)
     {
         if (Phase != GamePhase.WaitingBuyDecision)
         {
-            return GameResultDTO<bool>.Failure("Bukan fase yang tepat untuk keputusan beli properti.");
+            GameResultDTO<bool> wrongPhaseResult = GameResultDTO<bool>.Failure("Bukan fase yang tepat untuk keputusan beli properti.");
+            return wrongPhaseResult;
         }
 
         AttemptBuyCurrentProperty(CurrentPlayer, wantsToBuy);
-
         EndGame();
-
-        if (!GameEnded)
-        {
-            NextPlayer();
-        }
-
+        if (!GameEnded) NextPlayer();
         Phase = GamePhase.WaitingRoll;
-        return GameResultDTO<bool>.Success(true);
+
+        GameResultDTO<bool> successResult = GameResultDTO<bool>.Success(true);
+        return successResult;
     }
 
     public GameResultDTO<bool> BuyBuilding(IPlayer player, PropertyCity city, bool buildHotel)
     {
         if (player == null)
         {
-            return GameResultDTO<bool>.Failure("Player tidak boleh null.");
+            GameResultDTO<bool> nullResult = GameResultDTO<bool>.Failure("Player tidak boleh null.");
+            return nullResult;
         }
 
         ITile tile = GetTileByCity(city);
 
         if (tile.Asset == null)
         {
-            return GameResultDTO<bool>.Failure("Tile ini tidak memiliki aset.");
+            GameResultDTO<bool> noAssetResult = GameResultDTO<bool>.Failure("Tile ini tidak memiliki aset.");
+            return noAssetResult;
         }
 
         if (tile.Owner == null || !tile.Owner.Equals(player))
         {
-            return GameResultDTO<bool>.Failure($"Properti {city} bukan milik {player.Name}.");
+            GameResultDTO<bool> notOwnerResult = GameResultDTO<bool>.Failure($"Properti {city} bukan milik {player.Name}.");
+            return notOwnerResult;
         }
 
         Color? color = tile.Asset.Color;
-
         if (color == null)
         {
-            return GameResultDTO<bool>.Failure("Properti ini tidak memiliki warna (tidak bisa dibangun).");
+            GameResultDTO<bool> noColorResult = GameResultDTO<bool>.Failure("Properti ini tidak memiliki warna (tidak bisa dibangun).");
+            return noColorResult;
         }
 
         List<ITile> sameColorTiles = _board.Tiles.Where(t => t.Asset?.Color == color).ToList();
         bool hasMonopoly = sameColorTiles.All(t => t.Owner != null && t.Owner.Equals(player));
-
         if (!hasMonopoly)
         {
-            return GameResultDTO<bool>.Failure($"Pemain harus memiliki monopoli warna {color} untuk membangun.");
+            GameResultDTO<bool> noMonopolyResult = GameResultDTO<bool>.Failure($"Pemain harus memiliki monopoli warna {color} untuk membangun.");
+            return noMonopolyResult;
         }
 
         int housePrice = GetHousePrice(tile.Asset);
@@ -827,21 +835,23 @@ public class Game
 
         if (hasHotel)
         {
-            return GameResultDTO<bool>.Failure("Tile ini sudah memiliki hotel, tidak bisa dibangun lagi.");
+            GameResultDTO<bool> hotelExistsResult = GameResultDTO<bool>.Failure("Tile ini sudah memiliki hotel, tidak bisa dibangun lagi.");
+            return hotelExistsResult;
         }
 
         if (buildHotel)
         {
             if (currentHouses < 3)
             {
-                return GameResultDTO<bool>.Failure($"Dibutuhkan minimal 3 rumah sebelum membangun hotel. Saat ini: {currentHouses}.");
+                GameResultDTO<bool> notEnoughHousesResult = GameResultDTO<bool>.Failure($"Dibutuhkan minimal 3 rumah sebelum membangun hotel. Saat ini: {currentHouses}.");
+                return notEnoughHousesResult;
             }
 
-            int hotelPrice = housePrice * 5;
-            GameResultDTO<bool> subtractResult = SubstractPlayerMoney(player, new Money(hotelPrice));
+            GameResultDTO<bool> subtractResult = SubstractPlayerMoney(player, new Money(housePrice * 5));
             if (!subtractResult.IsSuccess)
             {
-                return GameResultDTO<bool>.Failure(subtractResult.Error!);
+                GameResultDTO<bool> subtractFailResult = GameResultDTO<bool>.Failure(subtractResult.Error!);
+                return subtractFailResult;
             }
 
             tile.House = 0;
@@ -851,56 +861,47 @@ public class Game
         {
             if (currentHouses >= 3)
             {
-                return GameResultDTO<bool>.Failure("Sudah mencapai maksimum 3 rumah. Bangun hotel sebagai gantinya.");
+                GameResultDTO<bool> maxHousesResult = GameResultDTO<bool>.Failure("Sudah mencapai maksimum 3 rumah. Bangun hotel sebagai gantinya.");
+                return maxHousesResult;
             }
 
             GameResultDTO<bool> subtractResult = SubstractPlayerMoney(player, new Money(housePrice));
             if (!subtractResult.IsSuccess)
             {
-                return GameResultDTO<bool>.Failure(subtractResult.Error!);
+                GameResultDTO<bool> subtractFailResult = GameResultDTO<bool>.Failure(subtractResult.Error!);
+                return subtractFailResult;
             }
 
             tile.House = currentHouses + 1;
         }
 
-        return GameResultDTO<bool>.Success(true);
+        GameResultDTO<bool> successResult = GameResultDTO<bool>.Success(true);
+        return successResult;
     }
 
     public GameResultDTO<int> SellAllAssetsToBank(IPlayer player)
     {
         if (player == null)
         {
-            return GameResultDTO<int>.Failure("Player tidak boleh null.");
+            GameResultDTO<int> nullResult = GameResultDTO<int>.Failure("Player tidak boleh null.");
+            return nullResult;
         }
 
-        List<ITile> properties = GetPlayerProperties(player).ToList();
         int totalIncome = 0;
-
-        foreach (ITile tile in properties)
+        foreach (ITile tile in GetPlayerProperties(player).ToList())
         {
-            if (tile.Asset == null)
-            {
-                continue;
-            }
-
-            GameResultDTO<int> sellResult = SellPropertyToBank(
-                player,
-                tile.Asset.City.PropertyCity,
-                includeBuildings: true
-            );
-
-            if (sellResult.IsSuccess)
-            {
-                totalIncome += sellResult.Data;
-            }
+            if (tile.Asset == null) continue;
+            GameResultDTO<int> sellResult = SellPropertyToBank(player, tile.Asset.City.PropertyCity, includeBuildings: true);
+            if (sellResult.IsSuccess) totalIncome += sellResult.Data;
         }
 
-        return GameResultDTO<int>.Success(totalIncome);
+        GameResultDTO<int> successResult = GameResultDTO<int>.Success(totalIncome);
+        return successResult;
     }
 
     private int GetHousePrice(IAsset asset)
     {
-        return asset.Color switch
+        int price = asset.Color switch
         {
             Color.Brown => 50,
             Color.LightBlue => 50,
@@ -912,25 +913,28 @@ public class Game
             Color.DarkBlue => 200,
             _ => 100,
         };
+        return price;
     }
 
     public GameResultDTO<int> SellBuildingsToBank(SendBuildingToBankResult sellInfo)
     {
         if (sellInfo == null)
         {
-            return GameResultDTO<int>.Failure("Info penjualan bangunan tidak boleh null.");
+            GameResultDTO<int> nullResult = GameResultDTO<int>.Failure("Info penjualan bangunan tidak boleh null.");
+            return nullResult;
         }
 
         ITile tile = GetTileByCity(sellInfo.City);
 
         if (tile.Owner == null || !tile.Owner.Equals(sellInfo.Player))
         {
-            return GameResultDTO<int>.Failure($"Properti {sellInfo.City} bukan milik {sellInfo.Player?.Name}.");
+            GameResultDTO<int> notOwnerResult = GameResultDTO<int>.Failure($"Properti {sellInfo.City} bukan milik {sellInfo.Player?.Name}.");
+            return notOwnerResult;
         }
-
         if (tile.Asset == null)
         {
-            return GameResultDTO<int>.Failure("Tile ini tidak memiliki aset.");
+            GameResultDTO<int> noAssetResult = GameResultDTO<int>.Failure("Tile ini tidak memiliki aset.");
+            return noAssetResult;
         }
 
         int houseCount = tile.House ?? 0;
@@ -938,7 +942,8 @@ public class Game
 
         if (!hasHotel && houseCount == 0)
         {
-            return GameResultDTO<int>.Failure("Tidak ada bangunan untuk dijual di properti ini.");
+            GameResultDTO<int> noBuildingResult = GameResultDTO<int>.Failure("Tidak ada bangunan untuk dijual di properti ini.");
+            return noBuildingResult;
         }
 
         int soldValue = 0;
@@ -952,7 +957,8 @@ public class Game
 
         if (sellInfo.HousesToSell > houseCount)
         {
-            return GameResultDTO<int>.Failure($"Jumlah rumah yang dijual ({sellInfo.HousesToSell}) melebihi yang tersedia ({houseCount}).");
+            GameResultDTO<int> tooManyResult = GameResultDTO<int>.Failure($"Jumlah rumah yang dijual ({sellInfo.HousesToSell}) melebihi yang tersedia ({houseCount}).");
+            return tooManyResult;
         }
 
         if (sellInfo.HousesToSell > 0)
@@ -962,30 +968,31 @@ public class Game
         }
 
         if (soldValue > 0)
-        {
             AddPlayerMoney(sellInfo.Player, new Money(soldValue));
-        }
 
-        return GameResultDTO<int>.Success(soldValue);
+        GameResultDTO<int> successResult = GameResultDTO<int>.Success(soldValue);
+        return successResult;
     }
 
     public GameResultDTO<int> SellPropertyToBank(IPlayer owner, PropertyCity city, bool includeBuildings = true)
     {
         if (owner == null)
         {
-            return GameResultDTO<int>.Failure("Owner tidak boleh null.");
+            GameResultDTO<int> nullResult = GameResultDTO<int>.Failure("Owner tidak boleh null.");
+            return nullResult;
         }
 
         ITile tile = GetTileByCity(city);
 
         if (tile.Owner == null || !tile.Owner.Equals(owner))
         {
-            return GameResultDTO<int>.Failure($"Properti {city} bukan milik {owner.Name}.");
+            GameResultDTO<int> notOwnerResult = GameResultDTO<int>.Failure($"Properti {city} bukan milik {owner.Name}.");
+            return notOwnerResult;
         }
-
         if (tile.Asset == null)
         {
-            return GameResultDTO<int>.Failure("Tile ini tidak memiliki aset.");
+            GameResultDTO<int> noAssetResult = GameResultDTO<int>.Failure("Tile ini tidak memiliki aset.");
+            return noAssetResult;
         }
 
         int totalIncome = 0;
@@ -994,38 +1001,28 @@ public class Game
 
         if ((houses > 0 || hasHotel) && !includeBuildings)
         {
-            return GameResultDTO<int>.Failure("Properti masih memiliki bangunan. Jual bangunan terlebih dahulu atau gunakan includeBuildings=true.");
+            GameResultDTO<int> hasBuildingResult = GameResultDTO<int>.Failure("Properti masih memiliki bangunan. Jual bangunan terlebih dahulu atau gunakan includeBuildings=true.");
+            return hasBuildingResult;
         }
 
         if (includeBuildings)
         {
             if (hasHotel)
             {
-                GameResultDTO<int> hotelResult = SellBuildingsToBank(
-                    new SendBuildingToBankResult(owner, city, 0, true)
-                );
-                if (hotelResult.IsSuccess)
-                {
-                    totalIncome += hotelResult.Data;
-                }
+                GameResultDTO<int> hotelResult = SellBuildingsToBank(new SendBuildingToBankResult(owner, city, 0, true));
+                if (hotelResult.IsSuccess) totalIncome += hotelResult.Data;
             }
 
             houses = tile.House ?? 0;
 
             if (houses > 0)
             {
-                GameResultDTO<int> houseResult = SellBuildingsToBank(
-                    new SendBuildingToBankResult(owner, city, houses, false)
-                );
-                if (houseResult.IsSuccess)
-                {
-                    totalIncome += houseResult.Data;
-                }
+                GameResultDTO<int> houseResult = SellBuildingsToBank(new SendBuildingToBankResult(owner, city, houses, false));
+                if (houseResult.IsSuccess) totalIncome += houseResult.Data;
             }
         }
 
         int propertySellValue = tile.Asset.Price.Value / 2;
-
         tile.Owner = null;
         tile.House = 0;
         tile.HasHotel = false;
@@ -1033,42 +1030,26 @@ public class Game
         AddPlayerMoney(owner, new Money(propertySellValue));
         totalIncome += propertySellValue;
 
-        return GameResultDTO<int>.Success(totalIncome);
+        GameResultDTO<int> successResult = GameResultDTO<int>.Success(totalIncome);
+        return successResult;
     }
 
     public bool IsPropertyAvailable(ITile tile)
     {
-        if (tile == null)
-        {
-            return false;
-        }
-
-        return tile.Asset != null && tile.Owner == null;
+        bool isAvailable = tile?.Asset != null && tile.Owner == null;
+        return isAvailable;
     }
 
     public ICard? DrawCard(TileType drawType)
     {
-        List<ICard> candidates = new List<ICard>();
+        List<ICard> candidates = _cards.Where(card =>
+            (drawType == TileType.DrawChance && card is ChanceCard) ||
+            (drawType == TileType.DrawCommunity && card is CommunityCard)
+        ).ToList();
 
-        foreach (ICard card in _cards)
-        {
-            if (drawType == TileType.DrawChance && card is ChanceCard)
-            {
-                candidates.Add(card);
-            }
-            else if (drawType == TileType.DrawCommunity && card is CommunityCard)
-            {
-                candidates.Add(card);
-            }
-        }
+        if (candidates.Count == 0) return null;
 
-        if (candidates.Count == 0)
-        {
-            return null;
-        }
-
-        Random rand = new();
-        ICard chosenCard = candidates[rand.Next(candidates.Count)];
+        ICard chosenCard = candidates[new Random().Next(candidates.Count)];
         return chosenCard;
     }
 
@@ -1076,43 +1057,31 @@ public class Game
     {
         if (card == null)
         {
-            return GameResultDTO<bool>.Failure("Card tidak boleh null.");
+            GameResultDTO<bool> nullCardResult = GameResultDTO<bool>.Failure("Card tidak boleh null.");
+            return nullCardResult;
         }
-
         if (player == null)
         {
-            return GameResultDTO<bool>.Failure("Player tidak boleh null.");
+            GameResultDTO<bool> nullPlayerResult = GameResultDTO<bool>.Failure("Player tidak boleh null.");
+            return nullPlayerResult;
         }
 
-        if (card is CommunityCard)
+        GameResultDTO<bool> executeResult = card switch
         {
-            return ExecuteCommunityCard(card, player);
-        }
-        else if (card is ChanceCard)
-        {
-            return ExecuteChanceCard(card, player);
-        }
-
-        return GameResultDTO<bool>.Failure("Tipe card tidak dikenali.");
+            CommunityCard => ExecuteCommunityCard(card, player),
+            ChanceCard => ExecuteChanceCard(card, player),
+            _ => GameResultDTO<bool>.Failure("Tipe card tidak dikenali.")
+        };
+        return executeResult;
     }
 
     private int HandleStreetRepairs(IPlayer player)
     {
-        if (player == null)
-        {
-            return 0;
-        }
+        if (player == null) return 0;
 
-        int totalCost = 0;
-
-        foreach (ITile tile in _board.Tiles)
-        {
-            if (tile.Owner != null && tile.Owner.Equals(player) && tile.Asset != null)
-            {
-                totalCost += (tile.House ?? 0) * BuildingValue.HOUSE_COST;
-                totalCost = tile.HasHotel == true ? totalCost + BuildingValue.HOTEL_COST : totalCost;
-            }
-        }
+        int totalCost = _board.Tiles
+            .Where(t => t.Owner != null && t.Owner.Equals(player) && t.Asset != null)
+            .Sum(t => (t.House ?? 0) * BuildingValue.HOUSE_COST + (t.HasHotel == true ? BuildingValue.HOTEL_COST : 0));
 
         return totalCost;
     }
@@ -1134,14 +1103,8 @@ public class Game
                 AddPlayerMoney(player, new Money(MoneyValue.fifty));
                 break;
             case CardBehaviour.GetOutOfJailFree:
-                if (CheckPlayerJailStatus(player))
-                {
-                    ReleaseFromJail(player);
-                }
-                else
-                {
-                    player.JailFreeCardCount++;
-                }
+                if (CheckPlayerJailStatus(player)) ReleaseFromJail(player);
+                else player.JailFreeCardCount++;
                 break;
             case CardBehaviour.GoToJail:
                 SendPieceToJail(player);
@@ -1154,12 +1117,7 @@ public class Game
                 break;
             case CardBehaviour.Birthday:
                 foreach (IPlayer p in _players)
-                {
-                    if (!p.Equals(player))
-                    {
-                        TransferPlayerMoney(p, player, new Money(MoneyValue.ten));
-                    }
-                }
+                    if (!p.Equals(player)) TransferPlayerMoney(p, player, new Money(MoneyValue.ten));
                 break;
             case CardBehaviour.LifeInsuranceMatures:
                 AddPlayerMoney(player, new Money(MoneyValue.hundred));
@@ -1174,8 +1132,8 @@ public class Game
                 AddPlayerMoney(player, new Money(MoneyValue.twenty + MoneyValue.five));
                 break;
             case CardBehaviour.StreetRepairs:
-                int totalCost = HandleStreetRepairs(player);
-                SubstractPlayerMoney(player, new Money(totalCost));
+                int repairCost = HandleStreetRepairs(player);
+                SubstractPlayerMoney(player, new Money(repairCost));
                 break;
             case CardBehaviour.BeautyContestPrize:
                 AddPlayerMoney(player, new Money(MoneyValue.hundred));
@@ -1184,10 +1142,12 @@ public class Game
                 AddPlayerMoney(player, new Money(MoneyValue.hundred));
                 break;
             default:
-                return GameResultDTO<bool>.Failure($"CardBehaviour {card.Behaviour} tidak dikenali untuk Community Card.");
+                GameResultDTO<bool> unknownResult = GameResultDTO<bool>.Failure($"CardBehaviour {card.Behaviour} tidak dikenali untuk Community Card.");
+                return unknownResult;
         }
 
-        return GameResultDTO<bool>.Success(true);
+        GameResultDTO<bool> successResult = GameResultDTO<bool>.Success(true);
+        return successResult;
     }
 
     private GameResultDTO<bool> ExecuteChanceCard(ICard card, IPlayer player)
@@ -1214,22 +1174,14 @@ public class Game
                 MoveToNearestRailroad(player);
                 GameResultDTO<ITile?> nearestRailTile = GetCurrentTile(player);
                 if (nearestRailTile.IsSuccess && nearestRailTile.Data != null)
-                {
                     ExecuteTile(nearestRailTile.Data, player, true);
-                }
                 break;
             case CardBehaviour.BankPaysDividend:
                 AddPlayerMoney(player, new Money(MoneyValue.fifty));
                 break;
             case CardBehaviour.GetOutOfJailFree:
-                if (CheckPlayerJailStatus(player))
-                {
-                    ReleaseFromJail(player);
-                }
-                else
-                {
-                    player.JailFreeCardCount++;
-                }
+                if (CheckPlayerJailStatus(player)) ReleaseFromJail(player);
+                else player.JailFreeCardCount++;
                 break;
             case CardBehaviour.GoBackThreeSpaces:
                 MovePiece(player, -3);
@@ -1238,8 +1190,8 @@ public class Game
                 SendPieceToJail(player);
                 break;
             case CardBehaviour.MakeGeneralRepairs:
-                int totalCost = HandleStreetRepairs(player);
-                SubstractPlayerMoney(player, new Money(totalCost));
+                int repairCost = HandleStreetRepairs(player);
+                SubstractPlayerMoney(player, new Money(repairCost));
                 break;
             case CardBehaviour.PayPoorTax:
                 SubstractPlayerMoney(player, new Money(MoneyValue.ten + MoneyValue.five));
@@ -1252,33 +1204,31 @@ public class Game
                 break;
             case CardBehaviour.ChairmanOfTheBoard:
                 foreach (IPlayer p in _players)
-                {
-                    if (!p.Equals(player))
-                    {
-                        TransferPlayerMoney(player, p, new Money(MoneyValue.fifty));
-                    }
-                }
+                    if (!p.Equals(player)) TransferPlayerMoney(player, p, new Money(MoneyValue.fifty));
                 break;
             case CardBehaviour.YourBuildingLoanMatures:
                 AddPlayerMoney(player, new Money(MoneyValue.hundred + MoneyValue.fifty));
                 break;
             default:
-                return GameResultDTO<bool>.Failure($"CardBehaviour {card.Behaviour} tidak dikenali untuk Chance Card.");
+                GameResultDTO<bool> unknownResult = GameResultDTO<bool>.Failure($"CardBehaviour {card.Behaviour} tidak dikenali untuk Chance Card.");
+                return unknownResult;
         }
 
-        return GameResultDTO<bool>.Success(true);
+        GameResultDTO<bool> successResult = GameResultDTO<bool>.Success(true);
+        return successResult;
     }
 
     public GameResultDTO<ICard?> ExecuteTile(ITile tile, IPlayer player, bool doubleRent = false)
     {
         if (tile == null)
         {
-            return GameResultDTO<ICard?>.Failure("Tile tidak boleh null.");
+            GameResultDTO<ICard?> nullTileResult = GameResultDTO<ICard?>.Failure("Tile tidak boleh null.");
+            return nullTileResult;
         }
-
         if (player == null)
         {
-            return GameResultDTO<ICard?>.Failure("Player tidak boleh null.");
+            GameResultDTO<ICard?> nullPlayerResult = GameResultDTO<ICard?>.Failure("Player tidak boleh null.");
+            return nullPlayerResult;
         }
 
         switch (tile.Type)
@@ -1286,58 +1236,51 @@ public class Game
             case TileType.RentTile:
             case TileType.UtilityTile:
             case TileType.RailroadTile:
-                if (IsOnOwnedProperty(tile))
+                if (IsOnOwnedProperty(tile) && !tile.Owner!.Equals(player))
                 {
-                    if (!tile.Owner!.Equals(player))
-                    {
-                        int rent = Math.Max(10, tile.Asset!.Price.Value / 10);
-                        if (doubleRent)
-                        {
-                            rent *= 2;
-                        }
+                    int rent = Math.Max(10, tile.Asset!.Price.Value / 10);
+                    if (doubleRent) rent *= 2;
 
-                        GameResultDTO<bool> subtractResult = SubstractPlayerMoney(player, new Money(rent));
-                        if (subtractResult.IsSuccess && !player.IsBankrupt)
-                        {
-                            AddPlayerMoney(tile.Owner, new Money(rent));
-                        }
-                    }
+                    GameResultDTO<bool> subtractResult = SubstractPlayerMoney(player, new Money(rent));
+                    if (subtractResult.IsSuccess && !player.IsBankrupt)
+                        AddPlayerMoney(tile.Owner, new Money(rent));
                 }
-                return GameResultDTO<ICard?>.Success(null);
+                GameResultDTO<ICard?> rentResult = GameResultDTO<ICard?>.Success(null);
+                return rentResult;
 
             case TileType.TaxTile:
             case TileType.PayTaxTile:
                 SubstractPlayerMoney(player, new Money(MoneyValue.hundred));
-                return GameResultDTO<ICard?>.Success(null);
+                GameResultDTO<ICard?> taxResult = GameResultDTO<ICard?>.Success(null);
+                return taxResult;
 
             case TileType.GoToJailTile:
                 SendPieceToJail(player);
-                return GameResultDTO<ICard?>.Success(null);
+                GameResultDTO<ICard?> jailResult = GameResultDTO<ICard?>.Success(null);
+                return jailResult;
 
             case TileType.DrawChance:
                 ICard? chanceCard = DrawCard(tile.Type);
-                if (chanceCard != null)
-                {
-                    ExecuteCard(chanceCard, player);
-                }
-                return GameResultDTO<ICard?>.Success(chanceCard);
+                if (chanceCard != null) ExecuteCard(chanceCard, player);
+                GameResultDTO<ICard?> chanceResult = GameResultDTO<ICard?>.Success(chanceCard);
+                return chanceResult;
 
             case TileType.DrawCommunity:
                 ICard? communityCard = DrawCard(tile.Type);
-                if (communityCard != null)
-                {
-                    ExecuteCard(communityCard, player);
-                }
-                return GameResultDTO<ICard?>.Success(communityCard);
+                if (communityCard != null) ExecuteCard(communityCard, player);
+                GameResultDTO<ICard?> communityResult = GameResultDTO<ICard?>.Success(communityCard);
+                return communityResult;
 
             default:
-                return GameResultDTO<ICard?>.Failure($"Tipe tile '{tile.Type}' tidak memiliki efek yang dapat dieksekusi.");
+                GameResultDTO<ICard?> unknownResult = GameResultDTO<ICard?>.Failure($"Tipe tile '{tile.Type}' tidak memiliki efek yang dapat dieksekusi.");
+                return unknownResult;
         }
     }
 
     public List<ITile> GetPlayerProperties(IPlayer player)
     {
-        return _board.Tiles.Where(t => t.Owner != null && t.Owner.Equals(player)).ToList();
+        List<ITile> properties = _board.Tiles.Where(t => t.Owner != null && t.Owner.Equals(player)).ToList();
+        return properties;
     }
 
     public GameResultDTO<IPlayer?> GetWinnerOrNull()
@@ -1346,20 +1289,24 @@ public class Game
 
         if (activePlayers.Count == 1)
         {
-            return GameResultDTO<IPlayer?>.Success(activePlayers[0]);
+            GameResultDTO<IPlayer?> winnerResult = GameResultDTO<IPlayer?>.Success(activePlayers[0]);
+            return winnerResult;
         }
 
-        return GameResultDTO<IPlayer?>.Failure("Belum ada pemenang.");
+        GameResultDTO<IPlayer?> noWinnerResult = GameResultDTO<IPlayer?>.Failure("Belum ada pemenang.");
+        return noWinnerResult;
     }
 
     public IPlayer? FindPlayerByName(string playerName)
     {
-        return _players.FirstOrDefault(p => p.Name.Equals(playerName, StringComparison.OrdinalIgnoreCase));
+        IPlayer? player = _players.FirstOrDefault(p => p.Name.Equals(playerName, StringComparison.OrdinalIgnoreCase));
+        return player;
     }
 
     public bool IsPropertyOwnedBy(ITile tile, IPlayer player)
     {
-        return tile.Owner != null && tile.Owner.Equals(player);
+        bool isOwned = tile.Owner != null && tile.Owner.Equals(player);
+        return isOwned;
     }
 
     public bool CheckWinner()
@@ -1370,18 +1317,13 @@ public class Game
             IsGameEnded?.Invoke(winnerResult.Data);
             return true;
         }
-
         return false;
     }
 
     public bool EndGame()
     {
         bool isGameEnded = CheckWinner();
-        if (isGameEnded)
-        {
-            _gameEnded = true;
-        }
-
+        if (isGameEnded) _gameEnded = true;
         return isGameEnded;
     }
 }

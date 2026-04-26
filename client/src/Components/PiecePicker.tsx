@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { PieceComponents, PieceLabels, PieceOrder } from "../Components/MonopolyPieces";
 import { gameService } from "../services/gameService";
-import {playerColors} from "../Constant/PlayerColor"
+import {playerColors} from "../Constant/PlayerAssets"
 import type {PlayerProps} from "../Interfaces/Interface"
 
 export default function PiecePicker({ playerNames, onAllPicked }: PlayerProps) {

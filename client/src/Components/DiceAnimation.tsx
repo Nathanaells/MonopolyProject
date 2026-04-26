@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type {DiceProps} from "../Interfaces/Interface"
-
+import type { DiceProps } from "../Interfaces/Interface";
 
 const dotPosition: Record<number, Array<[number, number]>> = {
   1: [[50, 50]],
@@ -68,9 +67,14 @@ function DiceFace({
   );
 }
 
-export default function DiceAnimation({ die1, die2, rolling, onDone }: DiceProps) {
-  const [display1, setDisplay1] = useState(die1);
-  const [display2, setDisplay2] = useState(die2);
+export default function DiceAnimation({
+  dice1,
+  dice2,
+  rolling,
+  onDone,
+}: DiceProps) {
+  const [display1, setDisplay1] = useState(dice1);
+  const [display2, setDisplay2] = useState(dice2);
   const [shake, setShake] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -85,14 +89,14 @@ export default function DiceAnimation({ die1, die2, rolling, onDone }: DiceProps
 
       timeoutRef.current = setTimeout(() => {
         if (intervalRef.current) clearInterval(intervalRef.current);
-        setDisplay1(die1);
-        setDisplay2(die2);
+        setDisplay1(dice1);
+        setDisplay2(dice2);
         setShake(false);
         onDone?.();
       }, 1400);
     } else {
-      setDisplay1(die1);
-      setDisplay2(die2);
+      setDisplay1(dice1);
+      setDisplay2(dice2);
       setShake(false);
     }
 
@@ -100,7 +104,7 @@ export default function DiceAnimation({ die1, die2, rolling, onDone }: DiceProps
       if (intervalRef.current) clearInterval(intervalRef.current);
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
-  }, [rolling, die1, die2]);
+  }, [rolling, dice1, dice2]);
 
   return (
     <div className="flex gap-4 items-center justify-center">

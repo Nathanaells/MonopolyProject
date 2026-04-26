@@ -59,7 +59,6 @@ export interface SellResult {
   gameState: GameState;
 }
 
-
 export interface Props {
   playerName: string;
   isCurrentPlayer: boolean;
@@ -68,8 +67,8 @@ export interface Props {
 }
 
 export interface DiceProps {
-  die1: number;
-  die2: number;
+  dice1: number;
+  dice2: number;
   rolling: boolean;
   onDone?: () => void;
 }
@@ -78,3 +77,15 @@ export interface PlayerProps {
   playerNames: string[];
   onAllPicked: () => void;
 }
+
+export interface PieceSVGProps {
+  color: string;
+  size?: number;
+}
+
+export type PendingMove = {
+  playerName: string;
+  from: number;
+  to: number;
+  result: RollResult;
+};
