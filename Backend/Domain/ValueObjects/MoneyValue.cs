@@ -1,3 +1,5 @@
+
+
 public static class MoneyValue
 {
     public const int one = 1;

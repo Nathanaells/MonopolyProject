@@ -36,7 +36,9 @@ public class GameController : ControllerBase, IGameController
     public ActionResult<GameStateResponse> StartGame([FromBody] StartGameRequestDTO request)
     {
         if (request.PlayerNames == null || request.PlayerNames.Count < 2)
-            return BadRequest("Minimal 2 pemain.");
+        {
+            return BadRequest("Minimal 2 pemain diperlukan untuk memulai game.");
+        }
 
         IBoard board = BoardFactory.CreateBoard();
         List<IPlayer> players = PlayerFactory.CreatePlayers(
@@ -55,7 +57,9 @@ public class GameController : ControllerBase, IGameController
     public ActionResult<GameStateResponse> GetState()
     {
         if (_activeGame == null)
+        {
             return BadRequest("Game belum dimulai.");
+        }
 
         return Ok(GameStateMapper.BuildState(_activeGame));
     }
@@ -64,7 +68,9 @@ public class GameController : ControllerBase, IGameController
     public ActionResult<List<TileResponseDTO>> GetBoardTiles()
     {
         if (_activeGame == null)
+        {
             return BadRequest("Game belum dimulai.");
+        }
 
         List<TileResponseDTO> tiles = _activeGame
             .Board.Tiles.Select(
@@ -99,6 +105,7 @@ public class GameController : ControllerBase, IGameController
                 _activeGame == null || _activeGame.IsPieceAvailable(p)
             ))
             .ToList();
+
         return Ok(allPieces);
     }
 
@@ -106,28 +113,28 @@ public class GameController : ControllerBase, IGameController
     public ActionResult<GameStateResponse> SelectPiece([FromBody] SelectPieceRequestDTO request)
     {
         if (_activeGame == null)
+        {
             return BadRequest("Game belum dimulai.");
+        }
 
         IPlayer? player = _activeGame.FindPlayerByName(request.PlayerName);
         if (player == null)
         {
-            return BadRequest("Pemain tidak ditemukan.");
+            return BadRequest($"Pemain dengan nama '{request.PlayerName}' tidak ditemukan.");
         }
 
         if (!Enum.TryParse<PieceType>(request.PieceType, true, out PieceType pieceType))
         {
-            return BadRequest("Piece tidak valid.");
+            return BadRequest($"Piece '{request.PieceType}' tidak valid. Gunakan salah satu dari: {string.Join(", ", Enum.GetNames<PieceType>())}.");
         }
 
-        try
+        GameResultDTO<bool> result = _activeGame.AssignPieceToPlayer(player, pieceType);
+        if (!result.IsSuccess)
         {
-            _activeGame.AssignPieceToPlayer(player, pieceType);
-            return Ok(GameStateMapper.BuildState(_activeGame));
+            return BadRequest(result.Error);
         }
-        catch (Exception ex)
-        {
-            return BadRequest(ex.Message);
-        }
+
+        return Ok(GameStateMapper.BuildState(_activeGame));
     }
 
     [HttpPost("turn/roll")]
@@ -140,31 +147,31 @@ public class GameController : ControllerBase, IGameController
 
         if (_activeGame.GameEnded)
         {
-            return BadRequest("Game sudah selesai.");
+            return BadRequest("Game sudah selesai. Mulai game baru untuk bermain lagi.");
         }
 
-        try
-        {
-            RollTurnResult result = _activeGame.RollTurn();
+        GameResultDTO<RollTurnResult> result = _activeGame.RollTurn();
 
-            return Ok(
-                new RollTurnResponseDTO(
-                    result.DiceTotal,
-                    result.Dice1,
-                    result.Dice2,
-                    result.LandedTile?.Type.ToString() ?? "None",
-                    result.LandedTile?.Asset?.City.PropertyCity.ToString(),
-                    result.RequiresBuyDecision,
-                    result.DrawnCard?.Description,
-                    result.JailRollResult,
-                    GameStateMapper.BuildState(_activeGame)
-                )
-            );
-        }
-        catch (Exception ex)
+        if (!result.IsSuccess)
         {
-            return BadRequest(ex.Message);
+            return BadRequest(result.Error);
         }
+
+        RollTurnResult rollResult = result.Data!;
+
+        return Ok(
+            new RollTurnResponseDTO(
+                rollResult.DiceTotal,
+                rollResult.Dice1,
+                rollResult.Dice2,
+                rollResult.LandedTile?.Type.ToString() ?? "None",
+                rollResult.LandedTile?.Asset?.City.PropertyCity.ToString(),
+                rollResult.RequiresBuyDecision,
+                rollResult.DrawnCard?.Description,
+                rollResult.JailRollResult,
+                GameStateMapper.BuildState(_activeGame)
+            )
+        );
     }
 
     [HttpPost("turn/buy-property")]
@@ -172,18 +179,17 @@ public class GameController : ControllerBase, IGameController
     {
         if (_activeGame == null)
         {
-            return BadRequest("Game Not Started.");
+            return BadRequest("Game belum dimulai.");
         }
 
-        try
+        GameResultDTO<bool> result = _activeGame.HandleBuyDecision(request.Buy);
+
+        if (!result.IsSuccess)
         {
-            _activeGame.HandleBuyDecision(request.Buy);
-            return Ok(GameStateMapper.BuildState(_activeGame));
+            return BadRequest(result.Error);
         }
-        catch (Exception ex)
-        {
-            return BadRequest(ex.Message);
-        }
+
+        return Ok(GameStateMapper.BuildState(_activeGame));
     }
 
     [HttpPost("sell-property")]
@@ -198,15 +204,25 @@ public class GameController : ControllerBase, IGameController
 
         IPlayer? player = _activeGame.FindPlayerByName(request.PlayerName);
         if (player == null)
-            return BadRequest("Pemain tidak ditemukan.");
+        {
+            return BadRequest($"Pemain dengan nama '{request.PlayerName}' tidak ditemukan.");
+        }
 
         if (!Enum.TryParse<PropertyCity>(request.City, true, out PropertyCity city))
-            return BadRequest("Kota tidak valid.");
+        {
+            return BadRequest($"Kota '{request.City}' tidak valid.");
+        }
 
-        int income = _activeGame.SellPropertyToBank(player, city, request.IncludeBuildings);
+        GameResultDTO<int> sellResult = _activeGame.SellPropertyToBank(player, city, request.IncludeBuildings);
+
+        if (!sellResult.IsSuccess)
+        {
+            return BadRequest(sellResult.Error);
+        }
+
         _activeGame.EndGame();
 
-        return Ok(new SellResultResponseDTO(income, GameStateMapper.BuildState(_activeGame)));
+        return Ok(new SellResultResponseDTO(sellResult.Data, GameStateMapper.BuildState(_activeGame)));
     }
 
     [HttpPost("sell-buildings")]
@@ -215,23 +231,36 @@ public class GameController : ControllerBase, IGameController
     )
     {
         if (_activeGame == null)
+        {
             return BadRequest("Game belum dimulai.");
+        }
 
         IPlayer? player = _activeGame.FindPlayerByName(request.PlayerName);
         if (player == null)
-            return BadRequest("Pemain tidak ditemukan.");
+        {
+            return BadRequest($"Pemain dengan nama '{request.PlayerName}' tidak ditemukan.");
+        }
 
         if (!Enum.TryParse<PropertyCity>(request.City, true, out PropertyCity city))
-            return BadRequest("Kota tidak valid.");
+        {
+            return BadRequest($"Kota '{request.City}' tidak valid.");
+        }
 
-        int income = _activeGame.SellBuildingsToBank(
-            player,
-            city,
-            request.HousesToSell,
-            request.SellHotel
+        GameResultDTO<int> sellResult = _activeGame.SellBuildingsToBank(
+            new SendBuildingToBankResult(
+                player,
+                city,
+                request.HousesToSell,
+                request.SellHotel
+            )
         );
 
-        return Ok(new SellResultResponseDTO(income, GameStateMapper.BuildState(_activeGame)));
+        if (!sellResult.IsSuccess)
+        {
+            return BadRequest(sellResult.Error);
+        }
+
+        return Ok(new SellResultResponseDTO(sellResult.Data, GameStateMapper.BuildState(_activeGame)));
     }
 
     [HttpPost("execute-card")]
@@ -240,7 +269,9 @@ public class GameController : ControllerBase, IGameController
     )
     {
         if (_activeGame == null)
+        {
             return BadRequest("Game belum dimulai.");
+        }
 
         ICard card = request.CardType.Equals("Chance", StringComparison.OrdinalIgnoreCase)
             ? new ChanceCard(request.Description ?? request.Behaviour.ToString(), request.Behaviour)
@@ -249,7 +280,12 @@ public class GameController : ControllerBase, IGameController
                 request.Behaviour
             );
 
-        _activeGame.ExecuteCard(card, _activeGame.CurrentPlayer);
+        GameResultDTO<bool> executeResult = _activeGame.ExecuteCard(card, _activeGame.CurrentPlayer);
+
+        if (!executeResult.IsSuccess)
+        {
+            return BadRequest(executeResult.Error);
+        }
 
         return Ok(GameStateMapper.BuildState(_activeGame));
     }
@@ -258,11 +294,15 @@ public class GameController : ControllerBase, IGameController
     public ActionResult<List<TileResponseDTO>> GetPlayerProperties([FromQuery] string playerName)
     {
         if (_activeGame == null)
+        {
             return BadRequest("Game belum dimulai.");
+        }
 
         IPlayer? player = _activeGame.FindPlayerByName(playerName);
         if (player == null)
-            return BadRequest("Pemain tidak ditemukan.");
+        {
+            return BadRequest($"Pemain dengan nama '{playerName}' tidak ditemukan.");
+        }
 
         List<TileResponseDTO> properties = _activeGame
             .GetPlayerProperties(player)
@@ -296,24 +336,29 @@ public class GameController : ControllerBase, IGameController
     public ActionResult<GameStateResponse> BuyBuilding([FromBody] BuyBuildingRequestDTO request)
     {
         if (_activeGame == null)
+        {
             return BadRequest("Game belum dimulai.");
+        }
 
         IPlayer? player = _activeGame.FindPlayerByName(request.PlayerName);
         if (player == null)
-            return BadRequest("Pemain tidak ditemukan.");
+        {
+            return BadRequest($"Pemain dengan nama '{request.PlayerName}' tidak ditemukan.");
+        }
 
         if (!Enum.TryParse<PropertyCity>(request.City, true, out PropertyCity city))
-            return BadRequest("Kota tidak valid.");
+        {
+            return BadRequest($"Kota '{request.City}' tidak valid.");
+        }
 
-        try
+        GameResultDTO<bool> buildResult = _activeGame.BuyBuilding(player, city, request.BuildHotel);
+
+        if (!buildResult.IsSuccess)
         {
-            _activeGame.BuyBuilding(player, city, request.BuildHotel);
-            return Ok(GameStateMapper.BuildState(_activeGame));
+            return BadRequest(buildResult.Error);
         }
-        catch (Exception ex)
-        {
-            return BadRequest(ex.Message);
-        }
+
+        return Ok(GameStateMapper.BuildState(_activeGame));
     }
 
     [HttpPost("sell-all-assets")]
@@ -322,14 +367,23 @@ public class GameController : ControllerBase, IGameController
     )
     {
         if (_activeGame == null)
+        {
             return BadRequest("Game belum dimulai.");
+        }
 
         IPlayer? player = _activeGame.FindPlayerByName(request.PlayerName);
         if (player == null)
-            return BadRequest("Pemain tidak ditemukan.");
+        {
+            return BadRequest($"Pemain dengan nama '{request.PlayerName}' tidak ditemukan.");
+        }
 
-        int totalIncome = _activeGame.SellAllAssetsToBank(player);
+        GameResultDTO<int> sellResult = _activeGame.SellAllAssetsToBank(player);
 
-        return Ok(new SellResultResponseDTO(totalIncome, GameStateMapper.BuildState(_activeGame)));
+        if (!sellResult.IsSuccess)
+        {
+            return BadRequest(sellResult.Error);
+        }
+
+        return Ok(new SellResultResponseDTO(sellResult.Data, GameStateMapper.BuildState(_activeGame)));
     }
 }
