@@ -1,10 +1,8 @@
 import { useState, useEffect } from "react";
 import { gameService } from "../services/gameService";
 import type { TileData, Props } from "../Interfaces/Interface";
-import { colorHex  } from "../Constant/ColorHex";
-
-
-
+import { colorHex } from "../Constant/ColorHex";
+import { ShowError } from "../Constant/ToastUI";
 
 function HouseIcon({ count }: { count: number }) {
   return (
@@ -79,7 +77,8 @@ export default function PlayerPropertiesPanel({
       fetchProperties();
       onUpdate();
     } catch (e: any) {
-      flash(`${e.message}`);
+      console.log(e);
+      ShowError(`${e.message}`);
     } finally {
       setActionLoading(null);
     }
@@ -113,7 +112,7 @@ export default function PlayerPropertiesPanel({
       onUpdate();
       setConfirmSellAll(false);
     } catch (e: any) {
-      flash(`❌ ${e.message}`);
+      flash(` ${e.message}`);
     } finally {
       setActionLoading(null);
     }

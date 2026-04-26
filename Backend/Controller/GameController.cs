@@ -186,7 +186,7 @@ public class GameController : ControllerBase, IGameController
 
         if (!result.IsSuccess)
         {
-            return BadRequest(result.Error);
+            return BadRequest(new { message = result.Error });
         }
 
         return Ok(GameStateMapper.BuildState(_activeGame));
@@ -282,7 +282,7 @@ public class GameController : ControllerBase, IGameController
 
         GameResultDTO<bool> executeResult = _activeGame.ExecuteCard(card, _activeGame.CurrentPlayer);
 
-      
+
 
         if (!executeResult.IsSuccess)
         {
@@ -357,7 +357,7 @@ public class GameController : ControllerBase, IGameController
 
         if (!buildResult.IsSuccess)
         {
-            return BadRequest(buildResult.Error);
+            return BadRequest(new { message = buildResult.Error });
         }
 
         return Ok(GameStateMapper.BuildState(_activeGame));

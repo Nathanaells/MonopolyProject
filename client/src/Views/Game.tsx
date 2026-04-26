@@ -103,8 +103,13 @@ export default function Game() {
   async function loadBoardTiles() {
     try {
       const fetchedTiles = await gameService.getBoardTiles();
-      setTiles(fetchedTiles);
-      const builtBoard = buildBoard(fetchedTiles, 11);
+
+      const normalized = fetchedTiles.map((t) => ({
+        ...t,
+        position: { x: t.position.x, y: BOARD_SIZE - 1 - t.position.y },
+      }));
+      setTiles(normalized);
+      const builtBoard = buildBoard(normalized, 11);
       setBoard(builtBoard);
     } catch {
       ShowError("Failed to load board tiles");

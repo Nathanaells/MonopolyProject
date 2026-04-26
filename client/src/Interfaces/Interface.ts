@@ -3,6 +3,7 @@ export interface GameState {
   winner?: string;
   currentPlayer: string;
   players: PlayerState[];
+  message?: string;
 }
 
 export interface PlayerState {
@@ -57,6 +58,7 @@ export interface PieceData {
 export interface SellResult {
   income: number;
   gameState: GameState;
+  message?: string;
 }
 
 export interface Props {

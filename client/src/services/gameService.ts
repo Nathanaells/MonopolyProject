@@ -111,8 +111,7 @@ export const gameService = {
     });
     const data: GameState = await res.json();
     if (!res.ok) {
-      ShowError("Failed to buy building");
-      throw new Error("Failed to buy building");
+      throw new Error(data.message || "Failed to buy building");
     }
     return data as GameState;
   },
@@ -129,8 +128,7 @@ export const gameService = {
     });
     const data: SellResult = await res.json();
     if (!res.ok) {
-      ShowError("Failed to sell property");
-      throw new Error("Failed to sell property");
+      throw new Error(data.message || "Failed to sell property");
     }
     return data;
   },
@@ -146,10 +144,11 @@ export const gameService = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ playerName, city, housesToSell, sellHotel }),
     });
+
     const data: SellResult = await res.json();
+
     if (!res.ok) {
-      ShowError("Failed to sell buildings");
-      throw new Error("Failed to sell buildings");
+      throw new Error(data.message || "Failed to sell buildings");
     }
     return data;
   },
