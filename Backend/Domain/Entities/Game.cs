@@ -159,11 +159,15 @@ public class Game
     {
         if (Phase != GamePhase.WaitingRoll)
         {
-            GameResultDTO<RollTurnResult> wrongPhaseResult = GameResultDTO<RollTurnResult>.Failure("Bukan fase yang tepat untuk melempar dadu.");
-            return wrongPhaseResult;
+            return GameResultDTO<RollTurnResult>.Failure("Bukan fase yang tepat untuk melempar dadu.");
         }
 
         IPlayer player = CurrentPlayer;
+
+        if (!player.IsInJail && player.JailTurnsRemaining > 0)
+        {
+            player.JailTurnsRemaining = 0;
+        }
 
         if (player.IsInJail)
         {
@@ -172,23 +176,33 @@ public class Game
 
             if (firstDice == secondDice)
             {
-                MovePiece(player, firstDice + secondDice);
-                ReleaseFromJail(player);
-
-                GameResultDTO<ITile?> jailTileResult = GetCurrentTile(player);
-                if (!jailTileResult.IsSuccess || jailTileResult.Data == null)
+                GameResultDTO<bool> moveResult = MovePiece(player, firstDice + secondDice);
+                if (!moveResult.IsSuccess)
                 {
-                    GameResultDTO<RollTurnResult> failResult = GameResultDTO<RollTurnResult>.Failure("Gagal mendapatkan tile saat ini setelah keluar penjara.");
-                    return failResult;
+                    return GameResultDTO<RollTurnResult>.Failure(moveResult.Error!);
                 }
 
-                ITile landedTileJail = jailTileResult.Data;
-                HandleTileEffectsAfterMove(player, landedTileJail, out ICard? jailCard, out bool requiresBuyJail);
+                ReleaseFromJail(player);
 
-                if (!requiresBuyJail)
+                GameResultDTO<ITile?> tileResult = GetCurrentTile(player);
+                if (!tileResult.IsSuccess || tileResult.Data == null)
+                {
+                    return GameResultDTO<RollTurnResult>.Failure(tileResult.Error!);
+                }
+
+                ITile landedTile = tileResult.Data;
+
+                ICard? card;
+                bool requiresBuy;
+                HandleTileEffectsAfterMove(player, landedTile, out card, out requiresBuy);
+
+                if (!requiresBuy)
                 {
                     EndGame();
-                    if (!GameEnded) NextPlayer();
+                    if (!GameEnded)
+                    {
+                        NextPlayer();
+                    }
                     Phase = GamePhase.WaitingRoll;
                 }
                 else
@@ -196,19 +210,17 @@ public class Game
                     Phase = GamePhase.WaitingBuyDecision;
                 }
 
-                RollTurnResult jailReleasedData = new RollTurnResult(
-                    DiceTotal: firstDice + secondDice,
-                    Dice1: firstDice,
-                    Dice2: secondDice,
-                    LandedTileType: landedTileJail.Type.ToString(),
-                    LandedProperty: landedTileJail.Asset != null ? landedTileJail : null,
-                    LandedTile: landedTileJail,
-                    RequiresBuyDecision: requiresBuyJail,
-                    DrawnCard: jailCard,
-                    JailRollResult: JailRollResult.Released
-                );
-                GameResultDTO<RollTurnResult> jailReleasedResult = GameResultDTO<RollTurnResult>.Success(jailReleasedData);
-                return jailReleasedResult;
+                return GameResultDTO<RollTurnResult>.Success(new RollTurnResult(
+                    firstDice + secondDice,
+                    firstDice,
+                    secondDice,
+                    landedTile.Type.ToString(),
+                    landedTile.Asset != null ? landedTile : null,
+                    landedTile,
+                    requiresBuy,
+                    card,
+                    JailRollResult.Released
+                ));
             }
             else
             {
@@ -216,52 +228,60 @@ public class Game
 
                 if (player.JailTurnsRemaining <= 0)
                 {
-                    IMoney? fiftyMoney = _money.FirstOrDefault(m => m.Value == MoneyValue.fifty);
-                    GameResultDTO<int> balanceResult = GetPlayerBalance(player);
+                    IMoney? fifty = _money.FirstOrDefault(m => m.Value == MoneyValue.fifty);
+                    GameResultDTO<int> balance = GetPlayerBalance(player);
 
-                    if (fiftyMoney != null && balanceResult.IsSuccess && balanceResult.Data >= MoneyValue.fifty)
-                        SubstractPlayerMoney(player, fiftyMoney);
+                    if (fifty != null && balance.IsSuccess && balance.Data >= MoneyValue.fifty)
+                    {
+                        SubstractPlayerMoney(player, fifty);
+                    }
 
                     ReleaseFromJail(player);
                 }
 
                 EndGame();
-                if (!GameEnded) NextPlayer();
+                if (!GameEnded)
+                {
+                    NextPlayer();
+                }
+
                 Phase = GamePhase.WaitingRoll;
 
-                RollTurnResult jailStayedData = new RollTurnResult(
-                    DiceTotal: firstDice + secondDice,
-                    Dice1: firstDice,
-                    Dice2: secondDice,
-                    LandedTileType: "None",
-                    LandedProperty: null,
-                    LandedTile: null,
-                    RequiresBuyDecision: false,
-                    DrawnCard: null,
-                    JailRollResult: JailRollResult.StayedInJail
-                );
-                GameResultDTO<RollTurnResult> jailStayedResult = GameResultDTO<RollTurnResult>.Success(jailStayedData);
-                return jailStayedResult;
+                return GameResultDTO<RollTurnResult>.Success(new RollTurnResult(
+                    firstDice + secondDice,
+                    firstDice,
+                    secondDice,
+                    "None",
+                    null,
+                    null,
+                    false,
+                    null,
+                    JailRollResult.StayedInJail
+                ));
             }
         }
 
         if (CheckBankruptcy(player))
         {
             RemovePlayer(player);
-            EndGame();
-            if (!GameEnded) NextPlayer();
 
-            RollTurnResult bankruptData = new RollTurnResult(
-                DiceTotal: 0, Dice1: 0, Dice2: 0,
-                LandedTileType: "None",
-                LandedProperty: null,
-                LandedTile: null,
-                RequiresBuyDecision: false,
-                DrawnCard: null,
-                JailRollResult: JailRollResult.None
-            );
-            GameResultDTO<RollTurnResult> bankruptResult = GameResultDTO<RollTurnResult>.Success(bankruptData);
-            return bankruptResult;
+            EndGame();
+            if (!GameEnded)
+            {
+                NextPlayer();
+            }
+
+            return GameResultDTO<RollTurnResult>.Success(new RollTurnResult(
+                0,
+                0,
+                0,
+                "None",
+                null,
+                null,
+                false,
+                null,
+                JailRollResult.None
+            ));
         }
 
         int firstRoll = new Dice().MaxRolled;
@@ -269,84 +289,99 @@ public class Game
         int diceTotal = firstRoll + secondRoll;
 
         if (firstRoll == secondRoll)
+        {
             player.DoubleRoll++;
+        }
+        else
+        {
+            player.DoubleRoll = 0;
+        }
 
         if (player.DoubleRoll >= 3)
         {
             player.DoubleRoll = 0;
-            SendPieceToJail(player);
+
+            GameResultDTO<bool> jailResult = SendPieceToJail(player);
+            if (!jailResult.IsSuccess)
+            {
+                return GameResultDTO<RollTurnResult>.Failure(jailResult.Error!);
+            }
+
             EndGame();
-            if (!GameEnded) NextPlayer();
+            if (!GameEnded)
+            {
+                NextPlayer();
+            }
+
             Phase = GamePhase.WaitingRoll;
 
-            RollTurnResult sentToJailData = new RollTurnResult(
-                DiceTotal: diceTotal,
-                Dice1: firstRoll,
-                Dice2: secondRoll,
-                LandedTileType: "SentToJail",
-                LandedProperty: null,
-                LandedTile: null,
-                RequiresBuyDecision: false,
-                DrawnCard: null,
-                JailRollResult: JailRollResult.None
-            );
-            GameResultDTO<RollTurnResult> sentToJailResult = GameResultDTO<RollTurnResult>.Success(sentToJailData);
-            return sentToJailResult;
+            return GameResultDTO<RollTurnResult>.Success(new RollTurnResult(
+                diceTotal,
+                firstRoll,
+                secondRoll,
+                "JailTile",
+                null,
+                null,
+                false,
+                null,
+                JailRollResult.None
+            ));
         }
 
-        GameResultDTO<bool> moveResult = MovePiece(player, diceTotal);
-        if (!moveResult.IsSuccess)
+        GameResultDTO<bool> moveResultNormal = MovePiece(player, diceTotal);
+        if (!moveResultNormal.IsSuccess)
         {
-            GameResultDTO<RollTurnResult> moveFailResult = GameResultDTO<RollTurnResult>.Failure(moveResult.Error!);
-            return moveFailResult;
+            return GameResultDTO<RollTurnResult>.Failure(moveResultNormal.Error!);
         }
 
-        GameResultDTO<ITile?> currentTileResult = GetCurrentTile(player);
-        if (!currentTileResult.IsSuccess || currentTileResult.Data == null)
+        GameResultDTO<ITile?> tileResultAfterMove = GetCurrentTile(player);
+        if (!tileResultAfterMove.IsSuccess || tileResultAfterMove.Data == null)
         {
-            GameResultDTO<RollTurnResult> tileFailResult = GameResultDTO<RollTurnResult>.Failure("Gagal mendapatkan tile saat ini setelah bergerak.");
-            return tileFailResult;
+            return GameResultDTO<RollTurnResult>.Failure(tileResultAfterMove.Error!);
         }
 
-        ITile landedTile = currentTileResult.Data;
-        HandleTileEffectsAfterMove(player, landedTile, out ICard? card, out bool requiresBuyDecision);
+        ITile landedTileFinal = tileResultAfterMove.Data;
+
+        ICard? drawnCard;
+        bool requiresBuyDecision;
+        HandleTileEffectsAfterMove(player, landedTileFinal, out drawnCard, out requiresBuyDecision);
 
         if (requiresBuyDecision)
         {
             Phase = GamePhase.WaitingBuyDecision;
 
-            RollTurnResult buyDecisionData = new RollTurnResult(
-                DiceTotal: diceTotal,
-                Dice1: firstRoll,
-                Dice2: secondRoll,
-                LandedTileType: landedTile.Type.ToString(),
-                LandedProperty: landedTile.Asset != null ? landedTile : null,
-                LandedTile: landedTile,
-                RequiresBuyDecision: true,
-                DrawnCard: null,
-                JailRollResult: JailRollResult.None
-            );
-            GameResultDTO<RollTurnResult> buyDecisionResult = GameResultDTO<RollTurnResult>.Success(buyDecisionData);
-            return buyDecisionResult;
+            return GameResultDTO<RollTurnResult>.Success(new RollTurnResult(
+                diceTotal,
+                firstRoll,
+                secondRoll,
+                landedTileFinal.Type.ToString(),
+                landedTileFinal.Asset != null ? landedTileFinal : null,
+                landedTileFinal,
+                true,
+                null,
+                JailRollResult.None
+            ));
         }
 
         EndGame();
-        if (!GameEnded) NextPlayer();
+        if (!GameEnded)
+        {
+            NextPlayer();
+        }
+
         Phase = GamePhase.WaitingRoll;
 
-        RollTurnResult normalData = new RollTurnResult(
-            DiceTotal: diceTotal,
-            Dice1: firstRoll,
-            Dice2: secondRoll,
-            LandedTileType: landedTile.Type.ToString(),
-            LandedProperty: landedTile.Asset != null ? landedTile : null,
-            LandedTile: landedTile,
-            RequiresBuyDecision: false,
-            DrawnCard: card,
-            JailRollResult: JailRollResult.None
-        );
-        GameResultDTO<RollTurnResult> normalResult = GameResultDTO<RollTurnResult>.Success(normalData);
-        return normalResult;
+        return GameResultDTO<RollTurnResult>.Success(new RollTurnResult(
+            diceTotal,
+            firstRoll,
+            secondRoll,
+            landedTileFinal.Type.ToString(),
+            landedTileFinal.Asset != null ? landedTileFinal : null,
+            landedTileFinal,
+            false,
+            drawnCard,
+            JailRollResult.None
+        ));
     }
 
     private void HandleTileEffectsAfterMove(
@@ -376,23 +411,27 @@ public class Game
             drawnCard = tileResult.Data;
     }
 
-    // Bergerak N langkah dari posisi saat ini, dengan logika wrap-around dan passing Go
+
     public GameResultDTO<bool> MovePiece(IPlayer player, int? step = null)
     {
         if (player == null)
         {
-            GameResultDTO<bool> nullResult = GameResultDTO<bool>.Failure("Player tidak boleh null.");
-            return nullResult;
+            return GameResultDTO<bool>.Failure("Player tidak boleh null.");
         }
 
         if (player.DoubleRoll >= 3)
         {
-            SendPieceToJail(player);
-            GameResultDTO<bool> jailResult = GameResultDTO<bool>.Success(true);
-            return jailResult;
+            GameResultDTO<bool> jail = SendPieceToJail(player);
+            if (!jail.IsSuccess)
+            {
+                return GameResultDTO<bool>.Failure(jail.Error!);
+            }
+
+            return GameResultDTO<bool>.Success(true);
         }
 
         int move;
+
         if (step.HasValue)
         {
             move = step.Value;
@@ -406,39 +445,66 @@ public class Game
         GameResultDTO<ITile?> currentTileResult = GetCurrentTile(player);
         if (!currentTileResult.IsSuccess || currentTileResult.Data == null)
         {
-            GameResultDTO<bool> tileFailResult = GameResultDTO<bool>.Failure("Gagal mendapatkan tile saat ini.");
-            return tileFailResult;
+            return GameResultDTO<bool>.Failure(currentTileResult.Error!);
         }
 
         ITile currentTile = currentTileResult.Data;
+
         int currentIndex = Array.IndexOf(_board.Tiles, currentTile);
         int count = _board.Tiles.Length;
         int newIndex = ((currentIndex + move) % count + count) % count;
 
         if (move > 0 && newIndex < currentIndex)
         {
-            IMoney? twoHundredMoney = _money.FirstOrDefault(m => m.Value == MoneyValue.twoHundred);
-            if (twoHundredMoney != null)
-                AddPlayerMoney(player, new Money(twoHundredMoney.Value));
+            IMoney? twoHundred = _money.FirstOrDefault(m => m.Value == MoneyValue.twoHundred);
+            if (twoHundred != null)
+            {
+                AddPlayerMoney(player, new Money(twoHundred.Value));
+            }
         }
 
-        MovePieceTo(player, _board.Tiles[newIndex]);
+        GameResultDTO<bool> moveToResult = MovePieceTo(player, _board.Tiles[newIndex]);
+        if (!moveToResult.IsSuccess)
+        {
+            return GameResultDTO<bool>.Failure(moveToResult.Error!);
+        }
 
-        GameResultDTO<bool> successResult = GameResultDTO<bool>.Success(true);
-        return successResult;
+        GameResultDTO<ITile?> verify = GetCurrentTile(player);
+        if (!verify.IsSuccess || verify.Data == null)
+        {
+            return GameResultDTO<bool>.Failure("Posisi piece tidak valid setelah move.");
+        }
+
+        return GameResultDTO<bool>.Success(true);
     }
 
-    // Teleport langsung ke tile tertentu (kartu, jail, dll)
-    private void MovePieceTo(IPlayer player, ITile targetTile)
+
+    private GameResultDTO<bool> MovePieceTo(IPlayer player, ITile targetTile)
     {
         GameResultDTO<ITile?> currentTileResult = GetCurrentTile(player);
-        if (!currentTileResult.IsSuccess || currentTileResult.Data == null) return;
+        if (!currentTileResult.IsSuccess || currentTileResult.Data == null)
+        {
+            return GameResultDTO<bool>.Failure(currentTileResult.Error!);
+        }
 
+        if (!_playerPiece.ContainsKey(player))
+        {
+            return GameResultDTO<bool>.Failure("Piece player tidak ditemukan.");
+        }
+
+        IPiece piece = _playerPiece[player];
         ITile currentTile = currentTileResult.Data;
-        currentTile.Pieces.Remove(_playerPiece[player]);
-        targetTile.Pieces.Add(_playerPiece[player]);
-    }
 
+        if (!currentTile.Pieces.Contains(piece))
+        {
+            return GameResultDTO<bool>.Failure("Piece tidak ada di tile asal.");
+        }
+
+        currentTile.Pieces.Remove(piece);
+        targetTile.Pieces.Add(piece);
+
+        return GameResultDTO<bool>.Success(true);
+    }
     private void MoveToNearestUtility(IPlayer player)
     {
         GameResultDTO<ITile?> currentTileResult = GetCurrentTile(player);
@@ -487,29 +553,22 @@ public class Game
     {
         if (player == null)
         {
-            GameResultDTO<ITile?> nullResult = GameResultDTO<ITile?>.Failure("Player tidak boleh null.");
-            return nullResult;
+            return GameResultDTO<ITile?>.Failure("Player tidak boleh null.");
         }
 
         if (!_playerPiece.TryGetValue(player, out IPiece? piece))
         {
-            GameResultDTO<ITile?> noPieceResult = GameResultDTO<ITile?>.Failure("Player tidak memiliki piece yang di-assign.");
-            return noPieceResult;
+            return GameResultDTO<ITile?>.Failure("Piece tidak ditemukan.");
         }
 
         ITile? tile = _board.Tiles.FirstOrDefault(t => t.Pieces.Contains(piece));
-        if (tile != null)
+
+        if (tile == null)
         {
-            GameResultDTO<ITile?> foundResult = GameResultDTO<ITile?>.Success(tile);
-            return foundResult;
+            return GameResultDTO<ITile?>.Failure("Piece tidak berada di tile manapun.");
         }
 
-        ITile startTile = GetTileByType(TileType.StartTile);
-        if (!startTile.Pieces.Contains(piece))
-            startTile.Pieces.Add(piece);
-
-        GameResultDTO<ITile?> startResult = GameResultDTO<ITile?>.Success(startTile);
-        return startResult;
+        return GameResultDTO<ITile?>.Success(tile);
     }
 
     private ITile GetTileByPropertyCity(PropertyCity city)
