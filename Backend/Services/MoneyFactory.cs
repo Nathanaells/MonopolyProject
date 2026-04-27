@@ -8,14 +8,14 @@ public class MoneyFactory
     {
         return new List<IMoney>
         {
-            new Money(MoneyValue.one),
-            new Money(MoneyValue.five),
-            new Money(MoneyValue.ten),
-            new Money(MoneyValue.twenty),
-            new Money(MoneyValue.fifty),
-            new Money(MoneyValue.hundred),
-            new Money(MoneyValue.twoHundred),
-            new Money(MoneyValue.fiveHundred),
+            new Money(MoneyValue.ONE),
+            new Money(MoneyValue.FIVE),
+            new Money(MoneyValue.TEN),
+            new Money(MoneyValue.TWENTY),
+            new Money(MoneyValue.FIFTY),
+            new Money(MoneyValue.HUNDRED),
+            new Money(MoneyValue.TWO_HUNDRED),
+            new Money(MoneyValue.FIVE_HUNDRED),
         };
     }
 }

@@ -1,8 +1,7 @@
 namespace Backend.Services;
 
-using Backend.Domain.ValueObjects;
 using Backend.Domain.Enums;
-
+using Backend.Domain.ValueObjects;
 
 public class PieceFactory
 {
@@ -10,7 +9,17 @@ public class PieceFactory
     {
         var pieces = new List<IPiece>();
 
-        var pieceTypes = new[] { PieceType.Tophat, PieceType.Car, PieceType.ScottieDog, PieceType.Thimble, PieceType.Cannon, PieceType.Wheelbarrow, PieceType.Battleship, PieceType.Horse };
+        var pieceTypes = new[]
+        {
+            PieceType.Tophat,
+            PieceType.Car,
+            PieceType.ScottieDog,
+            PieceType.Thimble,
+            PieceType.Cannon,
+            PieceType.Wheelbarrow,
+            PieceType.Battleship,
+            PieceType.Horse,
+        };
 
         foreach (var type in pieceTypes)
         {

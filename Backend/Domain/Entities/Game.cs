@@ -3,6 +3,7 @@ namespace Backend.Domain.Entities;
 using Backend.Domain.DTOs;
 using Backend.Domain.Enums;
 using Backend.Domain.Interfaces;
+using Backend.Domain.ValueObjects;
 
 public class Game
 {
@@ -18,6 +19,7 @@ public class Game
     private Dictionary<IPlayer, IPiece> _playerPiece;
     private Dictionary<IPlayer, List<IMoney>> _playerData;
     private Dictionary<PieceType, IPlayer> _takenPieces;
+    private bool _repeatTurnAfterBuyDecision = false;
 
     public event Action<IPlayer, IPiece>? PlayerSentToJail;
     public event Action<IPlayer>? PlayerBankrupt;
@@ -109,19 +111,19 @@ public class Game
             return takenResult;
         }
 
-        IPiece? newPiece = _pieces.FirstOrDefault(p => p.Type == pieceType);
-        if (newPiece == null)
-        {
-            GameResultDTO<bool> pieceNotFoundResult = GameResultDTO<bool>.Failure(
-                $"Piece {pieceType} tidak ditemukan."
-            );
-            return pieceNotFoundResult;
-        }
+        // Keep each player token as its own object instance to avoid shared-reference corruption.
+        IPiece newPiece = new Piece(pieceType, new Point(0, 0));
+
+        ITile? targetTile = null;
 
         if (_playerPiece.TryGetValue(player, out IPiece? oldPiece))
         {
-            ITile? currentTile = _board.Tiles.FirstOrDefault(t => t.Pieces.Contains(oldPiece));
-            currentTile?.Pieces.Remove(oldPiece);
+            targetTile = _board.Tiles.FirstOrDefault(t => t.Pieces.Contains(oldPiece));
+
+            foreach (ITile tile in _board.Tiles.Where(t => t.Pieces.Contains(oldPiece)))
+            {
+                tile.Pieces.Remove(oldPiece);
+            }
 
             KeyValuePair<PieceType, IPlayer> oldTakenEntry = _takenPieces.FirstOrDefault(kv =>
                 kv.Value.Equals(player)
@@ -136,12 +138,8 @@ public class Game
         _playerPiece[player] = newPiece;
         _takenPieces[newPiece.Type] = player;
 
-        ITile startTile = GetTileByType(TileType.StartTile);
-
-        if (!_board.Tiles.Any(t => t.Pieces.Contains(newPiece)))
-        {
-            startTile.Pieces.Add(newPiece);
-        }
+        ITile destinationTile = targetTile ?? GetTileByType(TileType.StartTile);
+        destinationTile.Pieces.Add(newPiece);
 
         GameResultDTO<bool> successResult = GameResultDTO<bool>.Success(true);
         return successResult;
@@ -376,6 +374,7 @@ public class Game
 
         if (requiresBuy)
         {
+            _repeatTurnAfterBuyDecision = isDouble;
             Phase = GamePhase.WaitingBuyDecision;
 
             return GameResultDTO<RollTurnResult>.Success(
@@ -424,6 +423,7 @@ public class Game
         }
 
         Phase = GamePhase.WaitingRoll;
+        _repeatTurnAfterBuyDecision = false;
     }
 
     private HandleTileResultDTO HandleTileEffectsAfterMove(IPlayer player, ITile tile)
@@ -949,15 +949,13 @@ public class Game
             return wrongPhaseResult;
         }
 
-        AttemptBuyCurrentProperty(CurrentPlayer, wantsToBuy);
+        GameResultDTO<bool> buyResult = AttemptBuyCurrentProperty(CurrentPlayer, wantsToBuy);
+        if (!buyResult.IsSuccess)
+        {
+            return GameResultDTO<bool>.Failure(buyResult.Error!);
+        }
 
-        // Check if game ended?
-        EndGame();
-
-        //private field GameEnded
-        if (!GameEnded)
-            NextPlayer();
-        Phase = GamePhase.WaitingRoll;
+        EndTurn(_repeatTurnAfterBuyDecision);
 
         GameResultDTO<bool> successResult = GameResultDTO<bool>.Success(true);
         return successResult;

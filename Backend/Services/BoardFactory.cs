@@ -15,7 +15,7 @@ public class BoardFactory
         boardTiles[1] = new Tile(TileType.RentTile, new Point(9, 0))
         {
             Asset = new Asset(
-                new Money(MoneyValue.fifty),
+                new Money(MoneyValue.FIFTY),
                 new City(PropertyCity.MediterraneanAvenue),
                 Color.Brown
             ),
@@ -24,7 +24,7 @@ public class BoardFactory
         boardTiles[3] = new Tile(TileType.RentTile, new Point(7, 0))
         {
             Asset = new Asset(
-                new Money(MoneyValue.fifty),
+                new Money(MoneyValue.FIFTY),
                 new City(PropertyCity.BalticAvenue),
                 Color.Brown
             ),
@@ -34,7 +34,7 @@ public class BoardFactory
         boardTiles[5] = new Tile(TileType.RailroadTile, new Point(5, 0))
         {
             Asset = new Asset(
-                new Money(MoneyValue.hundred),
+                new Money(MoneyValue.HUNDRED),
                 new City(PropertyCity.ReadingRailroad),
                 null
             ),
@@ -42,7 +42,7 @@ public class BoardFactory
         boardTiles[6] = new Tile(TileType.RentTile, new Point(4, 0))
         {
             Asset = new Asset(
-                new Money(MoneyValue.hundred),
+                new Money(MoneyValue.HUNDRED),
                 new City(PropertyCity.OrientalAvenue),
                 Color.LightBlue
             ),
@@ -51,7 +51,7 @@ public class BoardFactory
         boardTiles[8] = new Tile(TileType.RentTile, new Point(2, 0))
         {
             Asset = new Asset(
-                new Money(MoneyValue.hundred),
+                new Money(MoneyValue.HUNDRED),
                 new City(PropertyCity.VermontAvenue),
                 Color.LightBlue
             ),
@@ -59,7 +59,7 @@ public class BoardFactory
         boardTiles[9] = new Tile(TileType.RentTile, new Point(1, 0))
         {
             Asset = new Asset(
-                new Money(MoneyValue.hundred),
+                new Money(MoneyValue.HUNDRED),
                 new City(PropertyCity.ConnecticutAvenue),
                 Color.LightBlue
             ),
@@ -69,7 +69,7 @@ public class BoardFactory
         boardTiles[11] = new Tile(TileType.RentTile, new Point(0, 1))
         {
             Asset = new Asset(
-                new Money(MoneyValue.hundred + MoneyValue.fifty),
+                new Money(MoneyValue.HUNDRED + MoneyValue.FIFTY),
                 new City(PropertyCity.StCharlesPlace),
                 Color.Pink
             ),
@@ -78,7 +78,7 @@ public class BoardFactory
         boardTiles[12] = new Tile(TileType.UtilityTile, new Point(0, 2))
         {
             Asset = new Asset(
-                new Money(MoneyValue.hundred + MoneyValue.fifty),
+                new Money(MoneyValue.HUNDRED + MoneyValue.FIFTY),
                 new City(PropertyCity.ElectricCompany),
                 null
             ),
@@ -87,7 +87,7 @@ public class BoardFactory
         boardTiles[13] = new Tile(TileType.RentTile, new Point(0, 3))
         {
             Asset = new Asset(
-                new Money(MoneyValue.hundred + MoneyValue.fifty),
+                new Money(MoneyValue.HUNDRED + MoneyValue.FIFTY),
                 new City(PropertyCity.StatesAvenue),
                 Color.Pink
             ),
@@ -96,7 +96,7 @@ public class BoardFactory
         boardTiles[14] = new Tile(TileType.RentTile, new Point(0, 4))
         {
             Asset = new Asset(
-                new Money(MoneyValue.hundred + MoneyValue.fifty),
+                new Money(MoneyValue.HUNDRED + MoneyValue.FIFTY),
                 new City(PropertyCity.VirginiaAvenue),
                 Color.Pink
             ),
@@ -105,7 +105,7 @@ public class BoardFactory
         boardTiles[15] = new Tile(TileType.RailroadTile, new Point(0, 5))
         {
             Asset = new Asset(
-                new Money(MoneyValue.twoHundred),
+                new Money(MoneyValue.TWO_HUNDRED),
                 new City(PropertyCity.PennsylvaniaRailroad),
                 null
             ),
@@ -114,7 +114,7 @@ public class BoardFactory
         boardTiles[16] = new Tile(TileType.RentTile, new Point(0, 6))
         {
             Asset = new Asset(
-                new Money(MoneyValue.twoHundred),
+                new Money(MoneyValue.TWO_HUNDRED),
                 new City(PropertyCity.StJamesPlace),
                 Color.Orange
             ),
@@ -124,7 +124,7 @@ public class BoardFactory
         boardTiles[18] = new Tile(TileType.RentTile, new Point(0, 8))
         {
             Asset = new Asset(
-                new Money(MoneyValue.twoHundred),
+                new Money(MoneyValue.TWO_HUNDRED),
                 new City(PropertyCity.TennesseeAvenue),
                 Color.Orange
             ),
@@ -133,7 +133,7 @@ public class BoardFactory
         boardTiles[19] = new Tile(TileType.RentTile, new Point(0, 9))
         {
             Asset = new Asset(
-                new Money(MoneyValue.twoHundred),
+                new Money(MoneyValue.TWO_HUNDRED),
                 new City(PropertyCity.NewYorkAvenue),
                 Color.Orange
             ),
@@ -144,7 +144,7 @@ public class BoardFactory
         boardTiles[21] = new Tile(TileType.RentTile, new Point(1, 10))
         {
             Asset = new Asset(
-                new Money(MoneyValue.twoHundred + MoneyValue.hundred),
+                new Money(MoneyValue.TWO_HUNDRED + MoneyValue.HUNDRED),
                 new City(PropertyCity.KentuckyAvenue),
                 Color.Red
             ),
@@ -155,7 +155,7 @@ public class BoardFactory
         boardTiles[23] = new Tile(TileType.RentTile, new Point(3, 10))
         {
             Asset = new Asset(
-                new Money(MoneyValue.twoHundred + MoneyValue.hundred),
+                new Money(MoneyValue.TWO_HUNDRED + MoneyValue.HUNDRED),
                 new City(PropertyCity.IndianaAvenue),
                 Color.Red
             ),
@@ -163,7 +163,7 @@ public class BoardFactory
         boardTiles[24] = new Tile(TileType.RentTile, new Point(4, 10))
         {
             Asset = new Asset(
-                new Money(MoneyValue.twoHundred + MoneyValue.hundred),
+                new Money(MoneyValue.TWO_HUNDRED + MoneyValue.HUNDRED),
                 new City(PropertyCity.IllinoisAvenue),
                 Color.Red
             ),
@@ -172,7 +172,7 @@ public class BoardFactory
         boardTiles[25] = new Tile(TileType.RailroadTile, new Point(5, 10))
         {
             Asset = new Asset(
-                new Money(MoneyValue.twoHundred + MoneyValue.hundred + MoneyValue.fifty),
+                new Money(MoneyValue.TWO_HUNDRED + MoneyValue.HUNDRED + MoneyValue.FIFTY),
                 new City(PropertyCity.BORailroad),
                 null
             ),
@@ -181,7 +181,7 @@ public class BoardFactory
         boardTiles[26] = new Tile(TileType.RentTile, new Point(6, 10))
         {
             Asset = new Asset(
-                new Money(MoneyValue.twoHundred + MoneyValue.twoHundred),
+                new Money(MoneyValue.TWO_HUNDRED + MoneyValue.TWO_HUNDRED),
                 new City(PropertyCity.AtlanticAvenue),
                 Color.Yellow
             ),
@@ -190,7 +190,7 @@ public class BoardFactory
         boardTiles[27] = new Tile(TileType.RentTile, new Point(7, 10))
         {
             Asset = new Asset(
-                new Money(MoneyValue.twoHundred + MoneyValue.twoHundred),
+                new Money(MoneyValue.TWO_HUNDRED + MoneyValue.TWO_HUNDRED),
                 new City(PropertyCity.VentnorAvenue),
                 Color.Yellow
             ),
@@ -198,7 +198,7 @@ public class BoardFactory
         boardTiles[28] = new Tile(TileType.UtilityTile, new Point(8, 10))
         {
             Asset = new Asset(
-                new Money(MoneyValue.hundred + MoneyValue.fifty),
+                new Money(MoneyValue.HUNDRED + MoneyValue.FIFTY),
                 new City(PropertyCity.WaterWorks),
                 null
             ),
@@ -207,7 +207,7 @@ public class BoardFactory
         boardTiles[29] = new Tile(TileType.RentTile, new Point(9, 10))
         {
             Asset = new Asset(
-                new Money(MoneyValue.twoHundred + MoneyValue.hundred),
+                new Money(MoneyValue.TWO_HUNDRED + MoneyValue.HUNDRED),
                 new City(PropertyCity.MarvinGardens),
                 Color.Yellow
             ),
@@ -218,7 +218,7 @@ public class BoardFactory
         boardTiles[31] = new Tile(TileType.RentTile, new Point(10, 9))
         {
             Asset = new Asset(
-                new Money(MoneyValue.twoHundred + MoneyValue.hundred),
+                new Money(MoneyValue.TWO_HUNDRED + MoneyValue.HUNDRED),
                 new City(PropertyCity.PacificAvenue),
                 Color.Green
             ),
@@ -227,7 +227,7 @@ public class BoardFactory
         boardTiles[32] = new Tile(TileType.RentTile, new Point(10, 8))
         {
             Asset = new Asset(
-                new Money(MoneyValue.twoHundred + MoneyValue.hundred),
+                new Money(MoneyValue.TWO_HUNDRED + MoneyValue.HUNDRED),
                 new City(PropertyCity.NorthCarolinaAvenue),
                 Color.Green
             ),
@@ -238,7 +238,7 @@ public class BoardFactory
         boardTiles[34] = new Tile(TileType.RentTile, new Point(10, 6))
         {
             Asset = new Asset(
-                new Money(MoneyValue.twoHundred + MoneyValue.hundred),
+                new Money(MoneyValue.TWO_HUNDRED + MoneyValue.HUNDRED),
                 new City(PropertyCity.PennsylvaniaAvenue),
                 Color.Green
             ),
@@ -247,7 +247,7 @@ public class BoardFactory
         boardTiles[35] = new Tile(TileType.RailroadTile, new Point(10, 5))
         {
             Asset = new Asset(
-                new Money(MoneyValue.twoHundred + MoneyValue.twoHundred + MoneyValue.fifty),
+                new Money(MoneyValue.TWO_HUNDRED + MoneyValue.TWO_HUNDRED + MoneyValue.FIFTY),
                 new City(PropertyCity.ShortLineRailroad),
                 null
             ),
@@ -257,7 +257,7 @@ public class BoardFactory
         boardTiles[37] = new Tile(TileType.RentTile, new Point(10, 3))
         {
             Asset = new Asset(
-                new Money(MoneyValue.twoHundred + MoneyValue.hundred + MoneyValue.fifty),
+                new Money(MoneyValue.TWO_HUNDRED + MoneyValue.HUNDRED + MoneyValue.FIFTY),
                 new City(PropertyCity.ParkPlace),
                 Color.DarkBlue
             ),
@@ -267,7 +267,7 @@ public class BoardFactory
         boardTiles[39] = new Tile(TileType.RentTile, new Point(10, 1))
         {
             Asset = new Asset(
-                new Money(MoneyValue.twoHundred + MoneyValue.twoHundred),
+                new Money(MoneyValue.TWO_HUNDRED + MoneyValue.TWO_HUNDRED),
                 new City(PropertyCity.Boardwalk),
                 Color.DarkBlue
             ),
