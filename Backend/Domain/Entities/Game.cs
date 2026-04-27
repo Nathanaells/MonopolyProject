@@ -1599,12 +1599,6 @@ public class Game
         return player;
     }
 
-    public bool IsPropertyOwnedBy(ITile tile, IPlayer player)
-    {
-        bool isOwned = tile.Owner != null && tile.Owner.Equals(player);
-        return isOwned;
-    }
-
     public bool CheckWinner()
     {
         GameResultDTO<IPlayer?> winnerResult = GetWinnerOrNull();
