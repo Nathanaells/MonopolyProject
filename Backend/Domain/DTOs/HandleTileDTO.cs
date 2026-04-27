@@ -1,8 +1,6 @@
 namespace Backend.Domain.DTOs;
 
-using Backend.Domain.Enums;
 using Backend.Domain.Interfaces;
-
 
 public record HandleTileResultDTO
 {

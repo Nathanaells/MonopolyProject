@@ -17,8 +17,9 @@ import {
   TILE_SIZE,
   TILE_GAP,
 } from "../Constant/PlayerAssets";
-import type { PendingMove } from "../Interfaces/Interface";
 
+import woodTexture from "../assets/abstract-surface-wood-texture-background.jpg";
+import type {PendingMove} from "../Interfaces/Interface"
 export default function Game() {
   const playerNamesString = localStorage.getItem("playerNames");
   const playerNames = playerNamesString ? JSON.parse(playerNamesString) : [];
@@ -219,10 +220,10 @@ export default function Game() {
 
   if (!gameState || board.length === 0) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundImage: `url(${woodTexture})`, backgroundSize: "cover" }}>
+        <div className="flex flex-col items-center gap-3 bg-stone-800/80 backdrop-blur-sm p-8 rounded-2xl">
           <div className="w-8 h-8 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-zinc-400 text-sm tracking-widest uppercase">
+          <p className="text-stone-300 text-sm tracking-widest uppercase">
             Loading board…
           </p>
         </div>
@@ -234,15 +235,15 @@ export default function Game() {
     gameState.players.findIndex((p) => p.name === name);
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex overflow-hidden">
-      <aside className="w-48 flex-shrink-0 bg-zinc-900 border-r border-zinc-800 flex flex-col p-3 gap-2 overflow-y-auto">
-        <div className="bg-red-600 border-2 border-white text-center px-3 py-1 rotate-[-1deg] mb-1 self-center">
+    <div className="min-h-screen text-stone-800 flex overflow-hidden" style={{ backgroundImage: `url(${woodTexture})`, backgroundSize: "cover" }}>
+      <aside className="w-48 flex-shrink-0 bg-[#f9e8cf]/80 backdrop-blur-sm border-r border-[#8f4a42]/50 flex flex-col p-3 gap-2 overflow-y-auto">
+        <div className="bg-red-600 border-2 border-white text-center px-3 py-1 rotate-[-1deg] mb-1 self-center shadow-lg">
           <span className="text-base font-black text-white uppercase tracking-tight">
             Monopoly
           </span>
         </div>
 
-        <p className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold mt-1">
+        <p className="text-[9px] uppercase tracking-widest text-[#8f4a42] font-bold mt-1">
           Players
         </p>
 
@@ -254,8 +255,8 @@ export default function Game() {
               key={p.name}
               className={`rounded-xl p-2.5 border transition-all ${
                 isCurrent
-                  ? "bg-zinc-800 border-zinc-600"
-                  : "bg-zinc-900 border-zinc-800"
+                  ? "bg-white/80 border-red-700 shadow-md"
+                  : "bg-[#e4c0b2]/70 border-[#8f4a42]/60"
               } ${p.isBankrupt ? "opacity-40" : ""}`}
             >
               <div className="flex items-center gap-2 mb-1">
@@ -265,24 +266,24 @@ export default function Game() {
                   {PLAYER_DOTS[colorIdx % PLAYER_DOTS.length]}
                 </span>
                 <span
-                  className={`text-[11px] font-bold truncate flex-1 ${isCurrent ? "text-white" : "text-zinc-400"}`}
+                  className={`text-[11px] font-bold truncate flex-1 ${isCurrent ? "text-[#5a2f2a]" : "text-[#6a3832]"}`}
                 >
                   {p.name}
                 </span>
                 {isCurrent && (
-                  <span className="text-[7px] bg-red-600 text-white px-1.5 py-0.5 rounded font-bold flex-shrink-0">
+                  <span className="text-[7px] bg-red-700 text-white px-1.5 py-0.5 rounded font-bold flex-shrink-0">
                     TURN
                   </span>
                 )}
               </div>
               <div className="text-[10px]">
-                <span className="text-emerald-400 font-bold">${p.balance}</span>
+                <span className="text-emerald-600 font-bold">${p.balance}</span>
                 {p.isBankrupt && (
-                  <span className="ml-1 text-red-400 text-[9px]">Bankrupt</span>
+                  <span className="ml-1 text-red-600 text-[9px]">Bankrupt</span>
                 )}
               </div>
               {p.properties.length > 0 && (
-                <div className="text-[9px] text-zinc-600 mt-0.5">
+                <div className="text-[9px] text-[#8f4a42] mt-0.5">
                   {p.properties.length} propert
                   {p.properties.length > 1 ? "ies" : "y"}
                 </div>
@@ -294,13 +295,14 @@ export default function Game() {
 
       <main className="flex-1 flex items-center justify-center p-2 overflow-hidden">
         <div
-          className="relative border border-zinc-700 rounded-lg overflow-hidden"
+          className="relative border-none  rounded-lg overflow-hidden"
           style={{
             display: "grid",
+
             gridTemplateColumns: `repeat(${BOARD_SIZE}, 1fr)`,
             gridTemplateRows: `repeat(${BOARD_SIZE}, 1fr)`,
             gap: "1px",
-            background: "#27272a",
+            background: "#f9e8cf", // White board color
             width: "fit-content",
           }}
         >
@@ -321,7 +323,7 @@ export default function Game() {
                 return (
                   <div
                     key={`${x}-${y}`}
-                    className="w-[54px] h-[54px] bg-zinc-950 flex flex-col items-center justify-center gap-0.5"
+                    className="w-[54px] h-[54px] bg-[#d47867] flex flex-col items-center justify-center gap-0.5"
                   >
                     <div className="relative w-7 h-9 flex items-center justify-center">
                       <div className="absolute w-6 h-8 rounded bg-amber-700 border border-amber-500 rotate-6" />
@@ -341,7 +343,7 @@ export default function Game() {
                 return (
                   <div
                     key={`${x}-${y}`}
-                    className="w-[54px] h-[54px] bg-zinc-950 flex flex-col items-center justify-center gap-0.5"
+                    className="w-[54px] h-[54px] bg-[#d47867] flex flex-col items-center justify-center gap-0.5"
                   >
                     <div className="relative w-7 h-9 flex items-center justify-center">
                       <div className="absolute w-6 h-8 rounded bg-sky-900 border border-sky-700 rotate-6" />
@@ -363,9 +365,9 @@ export default function Game() {
                 return (
                   <div
                     key={`${x}-${y}`}
-                    className="w-[54px] h-[54px] bg-zinc-950 flex items-center justify-center"
+                    className="w-[54px] h-[54px] bg-[#d47867] flex items-center justify-center"
                   >
-                    <span className="text-[7px] font-black text-zinc-700 uppercase tracking-widest text-center leading-tight">
+                    <span className="text-[7px] font-black text-white uppercase tracking-widest text-center leading-tight">
                       Mono
                       <br />
                       poly
@@ -378,7 +380,7 @@ export default function Game() {
                 return (
                   <div
                     key={`${x}-${y}`}
-                    className="w-[54px] h-[54px] bg-zinc-950"
+                    className="w-[54px] h-[54px] bg-[#d47867] flex items-center justify-center"
                   />
                 );
               }
@@ -386,7 +388,7 @@ export default function Game() {
               return (
                 <div
                   key={`${x}-${y}`}
-                  className="w-[54px] h-[54px] bg-zinc-950 flex items-center justify-center"
+                  className="w-[54px] h-[54px] bg-white flex items-center justify-center"
                 >
                   {tile ? <Tiles {...tile} /> : null}
                 </div>
@@ -418,7 +420,7 @@ export default function Game() {
                     top: coord.y * (TILE_SIZE + TILE_GAP) + 8 + dy,
                   }}
                 >
-                  <div className="bg-zinc-950/70 rounded-md p-0.5 border border-zinc-700">
+                  <div className="bg-stone-900/70 backdrop-blur-sm rounded-md p-0.5 border border-stone-600/80">
                     <PieceComponent
                       size={18}
                       color={PLAYER_HEX[idx % PLAYER_HEX.length]}
@@ -431,15 +433,15 @@ export default function Game() {
         </div>
       </main>
 
-      <aside className="w-52 flex-shrink-0 bg-zinc-900 border-l border-zinc-800 flex flex-col p-3 gap-3 overflow-y-auto">
-        <div className="bg-zinc-800 rounded-xl p-3 border border-zinc-700">
-          <p className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold mb-1">
+      <aside className="w-52 flex-shrink-0 bg-[#f9e8cf]/80 backdrop-blur-sm border-l border-[#8f4a42]/50 flex flex-col p-3 gap-3 overflow-y-auto">
+        <div className="bg-white/80 rounded-xl p-3 border border-[#8f4a42]/60">
+          <p className="text-[9px] uppercase tracking-widest text-[#8f4a42] font-bold mb-1">
             Current Turn
           </p>
-          <p className="text-sm font-black text-white">
+          <p className="text-sm font-black text-[#5a2f2a]">
             {gameState.currentPlayer}
           </p>
-          <p className="text-xs text-emerald-400 font-bold">
+          <p className="text-xs text-emerald-600 font-bold">
             $
             {
               gameState.players.find((p) => p.name === gameState.currentPlayer)
@@ -452,7 +454,7 @@ export default function Game() {
           <button
             onClick={handleRoll}
             disabled={loading || isAnimating || isDiceRolling}
-            className="w-full py-3 bg-red-600 hover:bg-red-500 disabled:bg-zinc-700 disabled:text-zinc-500 text-white font-black uppercase tracking-wider text-sm rounded-xl transition-colors"
+            className="w-full py-3 bg-[#a92e23] hover:bg-[#92261d] disabled:bg-[#7f4b41] disabled:text-[#e4c0b2] text-white font-black uppercase tracking-wider text-sm rounded-xl transition-colors shadow-lg"
           >
             {loading ? "Rolling…" : "🎲 Roll Dice"}
           </button>
@@ -462,14 +464,14 @@ export default function Game() {
           <button
             onClick={() => setPropertiesPlayer(gameState.currentPlayer)}
             disabled={loading || isAnimating || isDiceRolling}
-            className="w-full py-2.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 disabled:bg-zinc-900 disabled:text-zinc-600 text-zinc-200 font-bold uppercase tracking-wider text-xs rounded-xl transition-colors"
+            className="w-full py-2.5 bg-[#6a3832]/80 hover:bg-[#5a2f2a]/80 border border-[#8f4a42]/80 disabled:bg-[#7f4b41] disabled:text-[#e4c0b2] text-stone-100 font-bold uppercase tracking-wider text-xs rounded-xl transition-colors"
           >
             Manage Properties
           </button>
         )}
 
         {diceRoll && (
-          <div className="bg-zinc-800 rounded-xl p-3 border border-zinc-700">
+          <div className="bg-white/80 rounded-xl p-3 border border-[#8f4a42]/60">
             <div className="mb-3">
               <DiceAnimation
                 dice1={diceRoll.dice1}
@@ -479,27 +481,27 @@ export default function Game() {
               />
             </div>
             <div className="flex items-baseline gap-2 mb-2">
-              <span className="text-3xl font-black text-white">
+              <span className="text-3xl font-black text-[#5a2f2a]">
                 {diceRoll.diceTotal}
               </span>
-              <span className="text-[10px] text-zinc-400 uppercase tracking-wider">
+              <span className="text-[10px] text-[#8f4a42] uppercase tracking-wider">
                 rolled
               </span>
             </div>
-            <p className="text-xs text-zinc-300">
+            <p className="text-xs text-[#6a3832]">
               Landed on{" "}
-              <span className="font-bold text-white">
+              <span className="font-bold text-[#5a2f2a]">
                 {diceRoll.landedProperty || diceRoll.landedTileType}
               </span>
             </p>
             {diceRoll.drawnCardDescription && (
-              <p className="text-xs text-amber-400 mt-2 italic">
+              <p className="text-xs text-amber-700 mt-2 italic">
                 "{diceRoll.drawnCardDescription}"
               </p>
             )}
 
             {diceRoll.jailRollResult !== "None" && (
-              <p className="text-[10px] text-zinc-400 mt-2 uppercase tracking-wider">
+              <p className="text-[10px] text-[#8f4a42] mt-2 uppercase tracking-wider">
                 Jail: {diceRoll.jailRollResult}
               </p>
             )}
@@ -507,25 +509,25 @@ export default function Game() {
         )}
 
         {buyPrompt && diceRoll && (
-          <div className="bg-zinc-800 rounded-xl p-3 border border-zinc-700">
-            <p className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold mb-1">
+          <div className="bg-white/80 rounded-xl p-3 border border-[#8f4a42]/60">
+            <p className="text-[9px] uppercase tracking-widest text-[#8f4a42] font-bold mb-1">
               Purchase?
             </p>
-            <p className="text-sm font-bold text-white mb-3">
+            <p className="text-sm font-bold text-[#5a2f2a] mb-3">
               {diceRoll.landedProperty}
             </p>
             <div className="flex gap-2">
               <button
                 onClick={() => handleBuyProperty(true)}
                 disabled={loading}
-                className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-700 text-white text-xs font-bold rounded-lg transition-colors"
+                className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-stone-400 text-white text-xs font-bold rounded-lg transition-colors"
               >
                 Buy
               </button>
               <button
                 onClick={() => handleBuyProperty(false)}
                 disabled={loading}
-                className="flex-1 py-2 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 text-xs font-bold rounded-lg transition-colors"
+                className="flex-1 py-2 bg-[#6a3832] hover:bg-[#5a2f2a] text-stone-100 text-xs font-bold rounded-lg transition-colors"
               >
                 Pass
               </button>
@@ -534,19 +536,19 @@ export default function Game() {
         )}
 
         {gameState.isGameEnded && (
-          <div className="bg-zinc-800 rounded-xl p-3 border border-amber-700">
-            <p className="text-[9px] uppercase tracking-widest text-amber-500 font-bold mb-1">
+          <div className="bg-white/80 rounded-xl p-3 border border-amber-600">
+            <p className="text-[9px] uppercase tracking-widest text-amber-700 font-bold mb-1">
               Game Over
             </p>
-            <p className="text-sm font-black text-white">
+            <p className="text-sm font-black text-[#5a2f2a]">
               🏆 {gameState.winner}
             </p>
           </div>
         )}
 
         {error && (
-          <div className="bg-red-950 rounded-xl p-3 border border-red-800">
-            <p className="text-xs text-red-400">{error}</p>
+          <div className="bg-red-800/80 rounded-xl p-3 border border-red-700/80">
+            <p className="text-xs text-red-100">{error}</p>
           </div>
         )}
       </aside>

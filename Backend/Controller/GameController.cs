@@ -29,6 +29,7 @@ public interface IGameController
 [ApiController]
 [Route("api/[controller]")]
 public class GameController : ControllerBase, IGameController
+//COntroller Base Dari Microsoft.AspNetCore.Mvc, IGameController Dari Interface yang kita buat
 {
     private static Game? _activeGame;
 

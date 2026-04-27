@@ -22,6 +22,8 @@ export const PLAYER_COLORS = [
 
 export const PLAYER_DOTS = ["●", "■", "▲", "♦", "★", "◆", "⬟", "⬢"];
 
+
+
 export const PLAYER_HEX = [
   "#ef4444",
   "#3b82f6",
@@ -36,3 +38,9 @@ export const PLAYER_HEX = [
 export const BOARD_SIZE = 11;
 export const TILE_SIZE = 54;
 export const TILE_GAP = 1;
+
+
+export const MAX_PLAYERS = 8;
+
+
+export const PLAYER_AVATARS = ["♟", "♜", "♝", "♛", "♞", "♚", "◆", "★"];

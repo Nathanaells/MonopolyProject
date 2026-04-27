@@ -65,10 +65,10 @@ export default function PiecePicker({ playerNames, onAllPicked }: PlayerProps) {
           {currentIdx + 1}
         </span>
         <div>
-          <p className="text-xs uppercase tracking-widest text-zinc-400 font-bold">
+          <p className="text-xs uppercase tracking-widest text-stone-500 font-bold">
             Pilih Token
           </p>
-          <p className="text-zinc-100 font-semibold text-sm">{currentPlayer}</p>
+          <p className="text-stone-800 font-semibold text-sm">{currentPlayer}</p>
         </div>
       </div>
 
@@ -80,7 +80,7 @@ export default function PiecePicker({ playerNames, onAllPicked }: PlayerProps) {
             return (
               <div
                 key={name}
-                className="flex items-center gap-1.5 bg-zinc-800 rounded-lg px-2.5 py-1.5"
+                className="flex items-center gap-1.5 bg-stone-200 rounded-lg px-2.5 py-1.5"
               >
                 <SVG
                   size={18}
@@ -88,7 +88,7 @@ export default function PiecePicker({ playerNames, onAllPicked }: PlayerProps) {
                     playerColors[idx % playerColors.length]
                   }
                 />
-                <span className="text-zinc-400 text-xs">{name}</span>
+                <span className="text-stone-600 text-xs">{name}</span>
               </div>
             );
           })}
@@ -110,8 +110,8 @@ export default function PiecePicker({ playerNames, onAllPicked }: PlayerProps) {
                 relative flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all duration-200
                 ${
                   isTaken
-                    ? "border-zinc-800 bg-zinc-900 opacity-30 cursor-not-allowed"
-                    : `border-zinc-700 bg-zinc-800 hover:border-zinc-500 hover:bg-zinc-750
+                    ? "border-stone-300 bg-stone-400 opacity-40 cursor-not-allowed"
+                    : `border-stone-400 bg-stone-200 hover:border-red-800 hover:bg-stone-300
                        active:scale-95 cursor-pointer`
                 }
               `}
@@ -133,12 +133,12 @@ export default function PiecePicker({ playerNames, onAllPicked }: PlayerProps) {
                       ]
                 }
               />
-              <span className="text-zinc-400 text-[10px] text-center leading-tight font-medium">
+              <span className="text-stone-600 text-[10px] text-center leading-tight font-medium">
                 {PieceLabels[pieceType]}
               </span>
               {isTaken && (
                 <div className="absolute inset-0 flex items-center justify-center rounded-xl">
-                  <span className="text-zinc-600 text-xs">✕</span>
+                  <span className="text-stone-500 text-xs">✕</span>
                 </div>
               )}
             </button>
@@ -156,10 +156,10 @@ export default function PiecePicker({ playerNames, onAllPicked }: PlayerProps) {
             key={i}
             className={`w-2 h-2 rounded-full transition-all ${
               i < currentIdx
-                ? "bg-green-500"
+                ? "bg-orange-700"
                 : i === currentIdx
-                  ? "bg-red-500 w-4"
-                  : "bg-zinc-700"
+                  ? "bg-red-800 w-4"
+                  : "bg-stone-400"
             }`}
           />
         ))}

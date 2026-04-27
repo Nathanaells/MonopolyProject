@@ -3,20 +3,9 @@ import { useNavigate } from "react-router";
 import { ShowSuccess } from "../Constant/ToastUI";
 import { gameService } from "../services/gameService";
 import PiecePicker from "../Components/PiecePicker";
+import { MAX_PLAYERS, PLAYER_AVATARS, PLAYER_COLORS } from "../Constant/PlayerAssets";
+import woodTexture from "../assets/abstract-surface-wood-texture-background.jpg";
 
-const MAX_PLAYERS = 8;
-
-const PLAYER_COLORS = [
-  "bg-red-500",
-  "bg-blue-500",
-  "bg-yellow-400",
-  "bg-green-500",
-  "bg-purple-500",
-  "bg-pink-500",
-  "bg-cyan-500",
-  "bg-orange-500",
-];
-const PLAYER_AVATARS = ["♟", "♜", "♝", "♛", "♞", "♚", "◆", "★"];
 
 type Step = "addPlayers" | "pickPieces";
 
@@ -61,13 +50,18 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-6 font-sans">
+    
+    <div className="relative min-h-screen bg-[#d6a06b] flex items-center justify-center p-6 font-sans overflow-hidden">
+      <img
+        src={woodTexture}
+        alt="Monopoly Board"
+        className="absolute inset-0 w-full h-full object-cover opacity-65 pointer-events-none"
+      />
       <div
-        className="absolute inset-0 opacity-5 pointer-events-none"
+        className="absolute inset-0 pointer-events-none"
         style={{
-          backgroundImage:
-            "repeating-conic-gradient(#fff 0% 25%, transparent 0% 50%)",
-          backgroundSize: "40px 40px",
+          background:
+            "radial-gradient(circle at 20% 20%, rgba(255,255,255,0.24), transparent 42%), linear-gradient(160deg, rgba(116,63,42,0.26), rgba(255,255,255,0.06) 45%, rgba(65,33,24,0.2))",
         }}
       />
 
@@ -78,18 +72,18 @@ export default function Home() {
               Monopoly
             </h1>
           </div>
-          <p className="text-zinc-400 text-sm tracking-widest uppercase mt-3">
+          <p className="text-white font-bold font text-sm tracking-widest uppercase mt-3">
             {step === "addPlayers" ? "Setup your game" : "Choose your token"}
           </p>
         </div>
 
-        <div className="bg-zinc-900 border border-zinc-700 rounded-2xl overflow-hidden shadow-2xl">
-          <div className="flex border-b border-zinc-700">
+        <div className="bg-gradient-to-br from-[#d47867] via-[#c9574d] to-[#ae4138] rounded-2xl overflow-hidden shadow-2xl border-2 border-[#5a2f2a]/60">
+          <div className="flex bg-[#5a2f2a]">
             {Array.from({ length: MAX_PLAYERS }, (_, i) => i + 1).map((n) => (
               <div
                 key={n}
                 className={`flex-1 h-1.5 transition-all duration-300 ${
-                  n <= playerNames.length ? "bg-red-500" : "bg-zinc-700"
+                  n <= playerNames.length ? "bg-[#f9e8cf]" : "bg-[#3f211d]/55"
                 }`}
               />
             ))}
@@ -100,36 +94,36 @@ export default function Home() {
               <>
                 <div className="mb-5">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold uppercase tracking-widest text-zinc-400">
+                    <span className="text-xs font-bold uppercase tracking-widest text-[#fff6e6]">
                       Players
                     </span>
-                    <span className="text-xs text-zinc-500">
+                    <span className="text-xs text-[#ffecd6]">
                       {playerNames.length} / {MAX_PLAYERS}
                     </span>
                   </div>
 
                   <div className="space-y-2 min-h-[48px]">
                     {playerNames.length === 0 && (
-                      <p className="text-zinc-600 text-sm text-center py-3">
+                      <p className="text-[#ffeede] text-sm text-center py-3 font-semibold">
                         Add at least 2 players to start
                       </p>
                     )}
                     {playerNames.map((name, idx) => (
                       <div
                         key={idx}
-                        className="flex items-center gap-3 bg-zinc-800 rounded-xl px-3 py-2.5 group"
+                        className="flex items-center gap-3 bg-[#6a3832]/92 rounded-xl px-3 py-2.5 group border border-[#8f4a42]"
                       >
                         <div
                           className={`w-7 h-7 rounded-lg ${PLAYER_COLORS[idx % PLAYER_COLORS.length]} flex items-center justify-center text-sm flex-shrink-0`}
                         >
                           {PLAYER_AVATARS[idx % PLAYER_AVATARS.length]}
                         </div>
-                        <span className="flex-1 text-sm font-semibold text-zinc-100 truncate">
+                        <span className="flex-1 text-sm font-semibold text-[#fff5eb] truncate">
                           {name}
                         </span>
                         <button
                           onClick={() => handleRemovePlayer(idx)}
-                          className="text-zinc-600 hover:text-red-400 transition-colors text-lg leading-none opacity-0 group-hover:opacity-100"
+                          className="text-[#ffd9c8] hover:text-[#fff2de] transition-colors text-lg leading-none opacity-0 group-hover:opacity-100"
                         >
                           ×
                         </button>
@@ -139,19 +133,19 @@ export default function Home() {
                 </div>
 
                 {playerNames.length < MAX_PLAYERS && (
-                  <div className="flex gap-2 mb-5">
+                  <div className="flex gap-2 mb-5 color-white">
                     <input
                       type="text"
                       value={playerInput}
                       onChange={(e) => setPlayerInput(e.target.value)}
                       onKeyDown={handleKeyDown}
                       placeholder={`Player ${playerNames.length + 1} name…`}
-                      className="flex-1 bg-zinc-800 border border-zinc-700 text-zinc-100 placeholder-zinc-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-red-500 transition-colors"
+                      className="flex-1 bg-[#f6e9d2] border border-[#8d4a40] text-[#5a2f2a] placeholder-[#9d6a58] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#a92e23] transition-colors"
                     />
                     <button
                       onClick={handleAddPlayer}
                       disabled={!playerInput.trim()}
-                      className="px-4 py-2.5 bg-red-600 hover:bg-red-500 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-xl text-sm font-bold transition-colors"
+                      className="px-4 py-2.5 bg-[#a92e23] hover:bg-[#92261d] disabled:bg-[#7f4b41] disabled:text-[#e4c0b2] text-white rounded-xl text-sm font-bold transition-colors"
                     >
                       Add
                     </button>
@@ -162,8 +156,8 @@ export default function Home() {
                   onClick={handleContinueToPieces}
                   disabled={playerNames.length < 2 || starting}
                   className="w-full py-3 rounded-xl font-black text-base uppercase tracking-wider transition-all duration-200
-                    bg-red-600 hover:bg-red-500 text-white
-                    disabled:bg-zinc-800 disabled:text-zinc-600 disabled:cursor-not-allowed"
+                    bg-[#a92e23] hover:bg-[#92261d] text-white
+                    disabled:bg-[#7f4b41] disabled:text-[#e4c0b2] disabled:cursor-not-allowed"
                 >
                   {starting
                     ? "Starting…"
@@ -183,7 +177,7 @@ export default function Home() {
           </div>
         </div>
 
-        <p className="text-center text-zinc-600 text-xs mt-4">
+        <p className="text-center text-[#4a2818]/82 text-xs mt-4 font-semibold">
           {step === "addPlayers"
             ? "Press Enter to quickly add a player"
             : "Pick a token for each player"}
