@@ -51,7 +51,9 @@ public class Game
             _playerPiece[player] = piece;
             _playerData[player] = new List<IMoney>
             {
-                new Money(MoneyValue.fiveHundred + MoneyValue.fiveHundred + MoneyValue.fiveHundred),
+                new Money(
+                    MoneyValue.FIVE_HUNDRED + MoneyValue.FIVE_HUNDRED + MoneyValue.FIVE_HUNDRED
+                ),
             };
             startTile.Pieces.Add(piece);
         }
