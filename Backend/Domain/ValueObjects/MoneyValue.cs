@@ -1,13 +1,11 @@
-
-
 public static class MoneyValue
 {
-    public const int one = 1;
-    public const int five = 5;
-    public const int ten = 10;
-    public const int twenty = 20;
-    public const int fifty = 50;
-    public const int hundred = 100;
-    public const int twoHundred = 200;
-    public const int fiveHundred = 500;
+    public const int ONE = 1;
+    public const int FIVE = 5;
+    public const int TEN = 10;
+    public const int TWENTY = 20;
+    public const int FIFTY = 50;
+    public const int HUNDRED = 100;
+    public const int TWO_HUNDRED = 200;
+    public const int FIVE_HUNDRED = 500;
 }

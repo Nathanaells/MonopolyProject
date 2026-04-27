@@ -125,7 +125,9 @@ public class GameController : ControllerBase, IGameController
 
         if (!Enum.TryParse<PieceType>(request.PieceType, true, out PieceType pieceType))
         {
-            return BadRequest($"Piece '{request.PieceType}' tidak valid. Gunakan salah satu dari: {string.Join(", ", Enum.GetNames<PieceType>())}.");
+            return BadRequest(
+                $"Piece '{request.PieceType}' tidak valid. Gunakan salah satu dari: {string.Join(", ", Enum.GetNames<PieceType>())}."
+            );
         }
 
         GameResultDTO<bool> result = _activeGame.AssignPieceToPlayer(player, pieceType);
@@ -213,7 +215,11 @@ public class GameController : ControllerBase, IGameController
             return BadRequest($"Kota '{request.City}' tidak valid.");
         }
 
-        GameResultDTO<int> sellResult = _activeGame.SellPropertyToBank(player, city, request.IncludeBuildings);
+        GameResultDTO<int> sellResult = _activeGame.SellPropertyToBank(
+            player,
+            city,
+            request.IncludeBuildings
+        );
 
         if (!sellResult.IsSuccess)
         {
@@ -222,7 +228,9 @@ public class GameController : ControllerBase, IGameController
 
         _activeGame.EndGame();
 
-        return Ok(new SellResultResponseDTO(sellResult.Data, GameStateMapper.BuildState(_activeGame)));
+        return Ok(
+            new SellResultResponseDTO(sellResult.Data, GameStateMapper.BuildState(_activeGame))
+        );
     }
 
     [HttpPost("sell-buildings")]
@@ -247,12 +255,7 @@ public class GameController : ControllerBase, IGameController
         }
 
         GameResultDTO<int> sellResult = _activeGame.SellBuildingsToBank(
-            new SendBuildingToBankResult(
-                player,
-                city,
-                request.HousesToSell,
-                request.SellHotel
-            )
+            new SendBuildingToBankResult(player, city, request.HousesToSell, request.SellHotel)
         );
 
         if (!sellResult.IsSuccess)
@@ -260,7 +263,9 @@ public class GameController : ControllerBase, IGameController
             return BadRequest(sellResult.Error);
         }
 
-        return Ok(new SellResultResponseDTO(sellResult.Data, GameStateMapper.BuildState(_activeGame)));
+        return Ok(
+            new SellResultResponseDTO(sellResult.Data, GameStateMapper.BuildState(_activeGame))
+        );
     }
 
     [HttpPost("execute-card")]
@@ -280,9 +285,10 @@ public class GameController : ControllerBase, IGameController
                 request.Behaviour
             );
 
-        GameResultDTO<bool> executeResult = _activeGame.ExecuteCard(card, _activeGame.CurrentPlayer);
-
-
+        GameResultDTO<bool> executeResult = _activeGame.ExecuteCard(
+            card,
+            _activeGame.CurrentPlayer
+        );
 
         if (!executeResult.IsSuccess)
         {
@@ -386,6 +392,8 @@ public class GameController : ControllerBase, IGameController
             return BadRequest(sellResult.Error);
         }
 
-        return Ok(new SellResultResponseDTO(sellResult.Data, GameStateMapper.BuildState(_activeGame)));
+        return Ok(
+            new SellResultResponseDTO(sellResult.Data, GameStateMapper.BuildState(_activeGame))
+        );
     }
 }
