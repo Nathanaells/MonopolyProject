@@ -3,8 +3,8 @@ using Backend.Domain.Entities;
 using Backend.Domain.Enums;
 using Backend.Domain.Interfaces;
 using Backend.DTOs;
+using Backend.Factories;
 using Backend.Helpers;
-using Backend.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Backend.Controller;
@@ -29,6 +29,7 @@ public interface IGameController
 [ApiController]
 [Route("api/[controller]")]
 public class GameController : ControllerBase, IGameController
+//COntroller Base Dari Microsoft.AspNetCore.Mvc, IGameController Dari Interface yang kita buat
 {
     private static Game? _activeGame;
 
@@ -47,8 +48,9 @@ public class GameController : ControllerBase, IGameController
         List<IPiece> pieces = PieceFactory.CreateStandardPieces();
         List<ICard> cards = CardFactory.CreateDefaultCards();
         List<IMoney> money = MoneyFactory.CreateMoney();
+        List<IDice> dice = DiceFactory.CreateDice();
 
-        _activeGame = new Game(board, players, pieces, cards, money);
+        _activeGame = new Game(board, players, pieces, cards, money, dice);
 
         return Ok(GameStateMapper.BuildState(_activeGame));
     }

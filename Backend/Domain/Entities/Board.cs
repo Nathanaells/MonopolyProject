@@ -1,6 +1,6 @@
 using Backend.Domain.Interfaces;
 
-class Board : IBoard
+public class Board : IBoard
 {
     public ITile[] Tiles { get; set; }
 

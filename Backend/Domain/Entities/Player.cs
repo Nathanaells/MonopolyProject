@@ -2,7 +2,7 @@ namespace Backend.Domain.Entities;
 
 using Backend.Domain.Interfaces;
 
-class Player : IPlayer
+public class Player : IPlayer
 {
     public string Name { get; set; }
     public int DoubleRoll { get; set; }
