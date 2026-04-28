@@ -1,7 +1,7 @@
 using Backend.Domain.Enums;
 using Backend.Domain.Interfaces;
 
-class ChanceCard : ICard
+public class ChanceCard : ICard
 {
     public string Description { get; set; }
 

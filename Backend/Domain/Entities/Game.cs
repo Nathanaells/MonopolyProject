@@ -403,7 +403,7 @@ public class Game
         );
     }
 
-    public void EndTurn(bool repeatTurn)
+    private void EndTurn(bool repeatTurn)
     {
         EndGame();
 
@@ -415,7 +415,7 @@ public class Game
         Phase = GamePhase.WaitingRoll;
     }
 
-    public HandleTileResultDTO HandleTileEffectsAfterMove(IPlayer player, ITile tile)
+    private HandleTileResultDTO HandleTileEffectsAfterMove(IPlayer player, ITile tile)
     {
         if (IsPropertyAvailable(tile))
         {
@@ -437,7 +437,7 @@ public class Game
         };
     }
 
-    public GameResultDTO<bool> MovePiece(IPlayer player, int? step = null)
+    private GameResultDTO<bool> MovePiece(IPlayer player, int? step = null)
     {
         if (player == null)
         {
