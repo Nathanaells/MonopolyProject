@@ -72,7 +72,3 @@ public record SelectPieceRequestDTO(string PlayerName, string PieceType);
 public record BuyBuildingRequestDTO(string PlayerName, string City, bool BuildHotel = false);
 
 public record SellAllAssetsRequestDTO(string PlayerName);
-
-public record UserRegisterDTO(string Name, string Username, string Password);
-
-public record UserLoginDTO(string Username, string Password);

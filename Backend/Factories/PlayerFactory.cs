@@ -1,4 +1,4 @@
-namespace Backend.Services;
+namespace Backend.Factories;
 
 using Backend.Domain.Entities;
 using Backend.Domain.Interfaces;

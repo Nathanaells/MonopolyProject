@@ -1,7 +1,9 @@
+namespace Backend.Factories;
+
 using Backend.Domain.Enums;
 using Backend.Domain.Interfaces;
 
-class CardFactory
+public class CardFactory
 {
     public static List<ICard> CreateDefaultCards()
     {

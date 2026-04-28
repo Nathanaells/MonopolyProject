@@ -14,6 +14,7 @@ public class Game
     private List<ICard> _cards;
     private List<IPiece> _pieces;
     private List<IMoney> _money;
+    private List<IDice> _dice;
 
     private Dictionary<IPlayer, IPiece> _playerPiece;
     private Dictionary<IPlayer, List<IMoney>> _playerData;
@@ -29,11 +30,13 @@ public class Game
         List<IPlayer> players,
         List<IPiece> pieces,
         List<ICard> cards,
-        List<IMoney> money
+        List<IMoney> money,
+        List<IDice> dice
     )
     {
         _board = board;
         _players = players;
+        _dice = dice;
         _money = money;
         _pieces = pieces;
         _cards = cards;
@@ -42,21 +45,16 @@ public class Game
         _playerPiece = new Dictionary<IPlayer, IPiece>();
         _playerData = new Dictionary<IPlayer, List<IMoney>>();
 
-        ITile startTile = GetTileByType(TileType.StartTile);
-
         for (int i = 0; i < _players.Count; i++)
         {
             IPlayer player = _players[i];
-            IPiece piece = _pieces[i % _pieces.Count];
 
-            _playerPiece[player] = piece;
             _playerData[player] = new List<IMoney>
             {
                 new Money(
                     MoneyValue.FIVE_HUNDRED + MoneyValue.FIVE_HUNDRED + MoneyValue.FIVE_HUNDRED
                 ),
             };
-            startTile.Pieces.Add(piece);
         }
     }
 
@@ -94,15 +92,6 @@ public class Game
             return notFoundResult;
         }
 
-        if (
-            _playerPiece.TryGetValue(player, out IPiece? currentPiece)
-            && currentPiece.Type == pieceType
-        )
-        {
-            GameResultDTO<bool> alreadyAssignedResult = GameResultDTO<bool>.Success(true);
-            return alreadyAssignedResult;
-        }
-
         if (!IsPieceAvailable(pieceType))
         {
             GameResultDTO<bool> takenResult = GameResultDTO<bool>.Failure(
@@ -112,6 +101,7 @@ public class Game
         }
 
         IPiece? newPiece = _pieces.FirstOrDefault(p => p.Type == pieceType);
+
         if (newPiece == null)
         {
             GameResultDTO<bool> pieceNotFoundResult = GameResultDTO<bool>.Failure(
@@ -120,19 +110,9 @@ public class Game
             return pieceNotFoundResult;
         }
 
-        if (_playerPiece.TryGetValue(player, out IPiece? oldPiece))
+        if (_playerPiece.ContainsKey(player))
         {
-            ITile? currentTile = _board.Tiles.FirstOrDefault(t => t.Pieces.Contains(oldPiece));
-            currentTile?.Pieces.Remove(oldPiece);
-
-            KeyValuePair<PieceType, IPlayer> oldTakenEntry = _takenPieces.FirstOrDefault(kv =>
-                kv.Value.Equals(player)
-            );
-
-            if (!oldTakenEntry.Equals(default(KeyValuePair<PieceType, IPlayer>)))
-            {
-                _takenPieces.Remove(oldTakenEntry.Key);
-            }
+            return GameResultDTO<bool>.Failure("Player sudah memiliki piece.");
         }
 
         _playerPiece[player] = newPiece;
@@ -154,7 +134,7 @@ public class Game
         if (player == null)
         {
             GameResultDTO<IPiece> nullResult = GameResultDTO<IPiece>.Failure(
-                "Player tidak boleh null."
+                "Player tidak boleh kosong."
             );
             return nullResult;
         }
@@ -174,7 +154,9 @@ public class Game
     public void NextPlayer()
     {
         if (_gameEnded)
+        {
             return;
+        }
 
         do
         {
@@ -195,8 +177,8 @@ public class Game
 
         IPlayer player = CurrentPlayer;
 
-        int firstRoll = new Dice().MaxRolled;
-        int secondRoll = new Dice().MaxRolled;
+        int firstRoll = _dice[0].Roll();
+        int secondRoll = _dice[1].Roll();
         int total = firstRoll + secondRoll;
 
         bool isDouble = firstRoll == secondRoll;
@@ -225,6 +207,7 @@ public class Game
 
                 ICard? card = handleTileResult1.DrawnCard;
                 bool requiresBuy1 = handleTileResult1.RequiresBuyDecision;
+
                 EndTurn(false);
 
                 return GameResultDTO<RollTurnResult>.Success(
@@ -250,6 +233,7 @@ public class Game
                     ReleaseFromJail(player);
 
                     GameResultDTO<bool> moveResult = MovePiece(player, total);
+
                     if (!moveResult.IsSuccess)
                     {
                         return GameResultDTO<RollTurnResult>.Failure(moveResult.Error!);
@@ -273,19 +257,21 @@ public class Game
 
                     EndTurn(false);
 
-                    return GameResultDTO<RollTurnResult>.Success(
-                        new RollTurnResult(
-                            total,
-                            firstRoll,
-                            secondRoll,
-                            tile.Type.ToString(),
-                            tile.Asset != null ? tile : null,
-                            tile,
-                            requiresBuy2,
-                            card,
-                            JailRollResult.Released
-                        )
-                    );
+                    GameResultDTO<RollTurnResult> successResult =
+                        GameResultDTO<RollTurnResult>.Success(
+                            new RollTurnResult(
+                                total,
+                                firstRoll,
+                                secondRoll,
+                                tile.Type.ToString(),
+                                tile.Asset != null ? tile : null,
+                                tile,
+                                requiresBuy2,
+                                card,
+                                JailRollResult.Released
+                            )
+                        );
+                    return successResult;
                 }
                 else
                 {
@@ -334,6 +320,7 @@ public class Game
             player.DoubleRoll = 0;
 
             GameResultDTO<bool> jailResult = SendPieceToJail(player);
+
             if (!jailResult.IsSuccess)
             {
                 return GameResultDTO<RollTurnResult>.Failure(jailResult.Error!);
@@ -416,7 +403,7 @@ public class Game
         );
     }
 
-    private void EndTurn(bool repeatTurn)
+    public void EndTurn(bool repeatTurn)
     {
         EndGame();
 
@@ -428,12 +415,12 @@ public class Game
         Phase = GamePhase.WaitingRoll;
     }
 
-    private HandleTileResultDTO HandleTileEffectsAfterMove(IPlayer player, ITile tile)
+    public HandleTileResultDTO HandleTileEffectsAfterMove(IPlayer player, ITile tile)
     {
         if (IsPropertyAvailable(tile))
         {
             int price = tile.Asset?.Price.Value ?? 0;
-            var balanceResult = GetPlayerBalance(player);
+            GameResultDTO<int> balanceResult = GetPlayerBalance(player);
 
             if (balanceResult.IsSuccess && balanceResult.Data >= price)
             {
@@ -441,7 +428,7 @@ public class Game
             }
         }
 
-        var tileResult = ExecuteTile(tile, player);
+        GameResultDTO<ICard?> tileResult = ExecuteTile(tile, player);
 
         return new HandleTileResultDTO
         {
@@ -517,7 +504,7 @@ public class Game
         return GameResultDTO<bool>.Success(true);
     }
 
-    private GameResultDTO<bool> MovePieceTo(IPlayer player, ITile targetTile)
+    public GameResultDTO<bool> MovePieceTo(IPlayer player, ITile targetTile)
     {
         GameResultDTO<ITile?> currentTileResult = GetCurrentTile(player);
         if (!currentTileResult.IsSuccess || currentTileResult.Data == null)
@@ -544,7 +531,7 @@ public class Game
         return GameResultDTO<bool>.Success(true);
     }
 
-    private void MoveToNearestUtility(IPlayer player)
+    public void MoveToNearestUtility(IPlayer player)
     {
         GameResultDTO<ITile?> currentTileResult = GetCurrentTile(player);
 
