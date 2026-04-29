@@ -42,8 +42,8 @@ public class GameService_FullTest
         var prop = typeof(Game).GetProperty(
             "Phase",
             System.Reflection.BindingFlags.Instance
-            | System.Reflection.BindingFlags.Public
-            | System.Reflection.BindingFlags.NonPublic
+                | System.Reflection.BindingFlags.Public
+                | System.Reflection.BindingFlags.NonPublic
         );
         prop!.SetValue(game, phase);
     }
@@ -71,7 +71,10 @@ public class GameService_FullTest
     [Test]
     public void AssignPiece_Success_WhenValidPlayerAndPiece()
     {
-        GameResultDTO<bool> result = _game.AssignPieceToPlayer(_game.Players.First(), _game.Pieces.First().Type);
+        GameResultDTO<bool> result = _game.AssignPieceToPlayer(
+            _game.Players.First(),
+            _game.Pieces.First().Type
+        );
         Assert.That(result.IsSuccess, Is.True);
         Assert.That(result.Data, Is.True);
     }
@@ -97,7 +100,10 @@ public class GameService_FullTest
     public void AssignPiece_Failure_WhenPieceAlreadyTaken()
     {
         _game.AssignPieceToPlayer(_game.Players[0], _game.Pieces.First().Type);
-        GameResultDTO<bool> result = _game.AssignPieceToPlayer(_game.Players[1], _game.Pieces.First().Type);
+        GameResultDTO<bool> result = _game.AssignPieceToPlayer(
+            _game.Players[1],
+            _game.Pieces.First().Type
+        );
         Assert.That(result.IsSuccess, Is.False);
         Assert.That(result.Error, Does.Contain("sudah diambil oleh pemain lain"));
     }
@@ -105,7 +111,10 @@ public class GameService_FullTest
     [Test]
     public void AssignPiece_Failure_WhenPieceTypeInvalid()
     {
-        GameResultDTO<bool> result = _game.AssignPieceToPlayer(_game.Players.First(), PieceType.Tophat + 999);
+        GameResultDTO<bool> result = _game.AssignPieceToPlayer(
+            _game.Players.First(),
+            PieceType.Tophat + 999
+        );
         Assert.That(result.IsSuccess, Is.False);
         Assert.That(result.Error, Does.Contain("tidak ditemukan"));
     }
@@ -114,7 +123,10 @@ public class GameService_FullTest
     public void AssignPiece_Failure_WhenPlayerAlreadyHasPiece()
     {
         _game.AssignPieceToPlayer(_game.Players.First(), _game.Pieces[0].Type);
-        GameResultDTO<bool> result = _game.AssignPieceToPlayer(_game.Players.First(), _game.Pieces[1].Type);
+        GameResultDTO<bool> result = _game.AssignPieceToPlayer(
+            _game.Players.First(),
+            _game.Pieces[1].Type
+        );
         Assert.That(result.IsSuccess, Is.False);
         Assert.That(result.Error, Is.EqualTo("Player sudah memiliki piece."));
     }
@@ -185,7 +197,6 @@ public class GameService_FullTest
         Assert.That(_game.CurrentPlayerIndex, Is.EqualTo(0));
     }
 
-
     [Test]
     public void RollTurn_Success_WhenNormalConditions()
     {
@@ -224,12 +235,12 @@ public class GameService_FullTest
         Assert.That(result.IsSuccess, Is.True);
         Assert.That(result.Data!.JailRollResult, Is.EqualTo(JailRollResult.Released));
         Assert.That(player.IsInJail, Is.False);
+        Assert.That(_game.Phase, Is.EqualTo(GamePhase.WaitingRoll));
     }
 
     [Test]
     public void RollTurn_StaysInJail_WhenNoDoubleAndTurnsRemain()
     {
-
         IBoard board = BoardFactory.CreateBoard();
         List<IPlayer> players = PlayerFactory.CreatePlayers(["P1", "P2"]);
         List<IPiece> pieces = PieceFactory.CreateStandardPieces();
@@ -294,7 +305,6 @@ public class GameService_FullTest
     [Test]
     public void RollTurn_SetsPhaseToWaitingBuyDecision_WhenLandOnAvailableProperty()
     {
-
         IPlayer player = CurrentPlayerWithPiece();
         GameResultDTO<RollTurnResult> result = _game.RollTurn();
         Assert.That(result.IsSuccess, Is.True);
@@ -303,7 +313,6 @@ public class GameService_FullTest
     [Test]
     public void RollTurn_Failure_WhenMovePieceFails()
     {
-
         IPlayer player = _game.CurrentPlayer;
         GameResultDTO<RollTurnResult> result = _game.RollTurn();
         Assert.That(result.IsSuccess, Is.False);
@@ -313,18 +322,18 @@ public class GameService_FullTest
     [Test]
     public void RollTurn_HandlesBankruptPlayerAfterMove()
     {
-
         IPlayer player = CurrentPlayerWithPiece();
         IPlayer owner = _game.Players[1];
         _game.AssignPieceToPlayer(owner, _game.Pieces[1].Type);
 
-        ITile propertyTile = _game.Board.Tiles.First(t => t.Asset != null && t.Type == TileType.RentTile);
+        ITile propertyTile = _game.Board.Tiles.First(t =>
+            t.Asset != null && t.Type == TileType.RentTile
+        );
         _game.MovePieceTo(owner, propertyTile);
         _game.AttemptBuyCurrentProperty(owner, true);
 
         _game.SubstractPlayerMoney(player, new Money(_game.GetPlayerBalance(player).Data - 10));
         _game.MovePieceTo(player, propertyTile);
-
 
         GameResultDTO<RollTurnResult> result = _game.RollTurn();
         Assert.That(result.IsSuccess, Is.True);
@@ -359,6 +368,20 @@ public class GameService_FullTest
 
         _game.MovePieceTo(player, target);
         Assert.That(target.Pieces.Contains(piece), Is.True);
+    }
+
+    [Test]
+    public void MovePieceto_ShouldReturnFalse_WhenPlayerDoesntHavePiece()
+    {
+        IPlayer player = CurrentPlayerWithPiece();
+        ITile target = _game.Board.Tiles[5];
+
+        IPlayer player2 = _game.Players.First(p => p != player);
+
+        GameResultDTO<bool> result = _game.MovePieceTo(player2, target);
+
+        Assert.That(result.IsSuccess, Is.False);
+        Assert.That(result.Error, Is.EqualTo("Piece tidak ditemukan."));
     }
 
     [Test]
@@ -528,6 +551,28 @@ public class GameService_FullTest
     }
 
     [Test]
+    public void RemovePlayer_ShouldDecreamentCurrentPlayerIndex_WhenRemovingPreviousPlayer()
+    {
+        IPlayer first = _game.Players[0];
+        IPlayer second = _game.Players[1];
+        _game.NextPlayer();
+        _game.RemovePlayer(first);
+        Assert.That(_game.CurrentPlayer, Is.EqualTo(second));
+    }
+
+    [Test]
+    public void RemovePlayer_ShouldSetCurrentPlayerIndexToZero_WhenRemovingLastPlayer()
+    {
+        IPlayer last = _game.Players.Last();
+        _game.NextPlayer();
+        _game.NextPlayer();
+        _game.NextPlayer();
+        _game.NextPlayer();
+        _game.RemovePlayer(last);
+        Assert.That(_game.CurrentPlayerIndex, Is.EqualTo(0));
+    }
+
+    [Test]
     public void GetPlayerBalance_ReturnsPositiveBalance()
     {
         GameResultDTO<int> result = _game.GetPlayerBalance(_game.Players.First());
@@ -657,7 +702,11 @@ public class GameService_FullTest
     [Test]
     public void TransferPlayerMoney_Failure_WhenFromIsNull()
     {
-        GameResultDTO<bool> result = _game.TransferPlayerMoney(null, _game.Players[1], new Money(100));
+        GameResultDTO<bool> result = _game.TransferPlayerMoney(
+            null,
+            _game.Players[1],
+            new Money(100)
+        );
         Assert.That(result.IsSuccess, Is.False);
         Assert.That(result.Error, Is.EqualTo("Player tidak boleh null."));
     }
@@ -665,7 +714,11 @@ public class GameService_FullTest
     [Test]
     public void TransferPlayerMoney_Failure_WhenToIsNull()
     {
-        GameResultDTO<bool> result = _game.TransferPlayerMoney(_game.Players[0], null, new Money(100));
+        GameResultDTO<bool> result = _game.TransferPlayerMoney(
+            _game.Players[0],
+            null,
+            new Money(100)
+        );
         Assert.That(result.IsSuccess, Is.False);
         Assert.That(result.Error, Is.EqualTo("Player tidak boleh null."));
     }
@@ -673,7 +726,11 @@ public class GameService_FullTest
     [Test]
     public void TransferPlayerMoney_Failure_WhenMoneyIsNull()
     {
-        GameResultDTO<bool> result = _game.TransferPlayerMoney(_game.Players[0], _game.Players[1], null);
+        GameResultDTO<bool> result = _game.TransferPlayerMoney(
+            _game.Players[0],
+            _game.Players[1],
+            null
+        );
         Assert.That(result.IsSuccess, Is.False);
         Assert.That(result.Error, Is.EqualTo("Money tidak boleh null."));
     }
@@ -685,7 +742,11 @@ public class GameService_FullTest
         IPlayer to = _game.Players[1];
         int fromBalance = _game.GetPlayerBalance(from).Data;
 
-        GameResultDTO<bool> result = _game.TransferPlayerMoney(from, to, new Money(fromBalance + 9999));
+        GameResultDTO<bool> result = _game.TransferPlayerMoney(
+            from,
+            to,
+            new Money(fromBalance + 9999)
+        );
         Assert.That(result.IsSuccess, Is.False);
         Assert.That(result.Error, Does.Contain("Uang tidak cukup untuk transfer"));
     }
@@ -693,7 +754,11 @@ public class GameService_FullTest
     [Test]
     public void TransferPlayerMoney_Failure_WhenPlayerNotInGame()
     {
-        GameResultDTO<bool> result = _game.TransferPlayerMoney(new Player("Ghost"), _game.Players[1], new Money(100));
+        GameResultDTO<bool> result = _game.TransferPlayerMoney(
+            new Player("Ghost"),
+            _game.Players[1],
+            new Money(100)
+        );
         Assert.That(result.IsSuccess, Is.False);
         Assert.That(result.Error, Is.EqualTo("Data player tidak ditemukan."));
     }
@@ -740,7 +805,6 @@ public class GameService_FullTest
         ITile rentTile = _game.Board.Tiles.First(t => t.Type == TileType.RentTile);
         _game.MovePieceTo(player, rentTile);
 
-
         int bal = _game.GetPlayerBalance(player).Data;
         _game.SubstractPlayerMoney(player, new Money(bal));
 
@@ -782,11 +846,10 @@ public class GameService_FullTest
         Assert.That(result.IsSuccess, Is.True);
     }
 
-
     private ITile SetupMonopolyForPlayer(IPlayer player)
     {
-        IList<ITile> coloredTiles = _game.Board.Tiles
-            .Where(t => t.Asset?.Color == Color.Brown)
+        IList<ITile> coloredTiles = _game
+            .Board.Tiles.Where(t => t.Asset?.Color == Color.Brown)
             .ToList();
 
         foreach (ITile t in coloredTiles)
@@ -802,7 +865,11 @@ public class GameService_FullTest
         ITile tile = SetupMonopolyForPlayer(player);
         int housesBefore = tile.House ?? 0;
 
-        GameResultDTO<bool> result = _game.BuyBuilding(player, tile.Asset!.City.PropertyCity, false);
+        GameResultDTO<bool> result = _game.BuyBuilding(
+            player,
+            tile.Asset!.City.PropertyCity,
+            false
+        );
         Assert.That(result.IsSuccess, Is.True);
         Assert.That(tile.House, Is.EqualTo(housesBefore + 1));
     }
@@ -823,7 +890,11 @@ public class GameService_FullTest
     [Test]
     public void BuyBuilding_Failure_WhenPlayerIsNull()
     {
-        GameResultDTO<bool> result = _game.BuyBuilding(null, PropertyCity.MediterraneanAvenue, false);
+        GameResultDTO<bool> result = _game.BuyBuilding(
+            null,
+            PropertyCity.MediterraneanAvenue,
+            false
+        );
         Assert.That(result.IsSuccess, Is.False);
         Assert.That(result.Error, Is.EqualTo("Player tidak boleh null."));
     }
@@ -834,7 +905,11 @@ public class GameService_FullTest
         IPlayer player = _game.Players.First();
         ITile tile = _game.Board.Tiles.First(t => t.Asset?.Color == Color.Brown);
 
-        GameResultDTO<bool> result = _game.BuyBuilding(player, tile.Asset!.City.PropertyCity, false);
+        GameResultDTO<bool> result = _game.BuyBuilding(
+            player,
+            tile.Asset!.City.PropertyCity,
+            false
+        );
         Assert.That(result.IsSuccess, Is.False);
         Assert.That(result.Error, Does.Contain("bukan milik"));
     }
@@ -843,10 +918,16 @@ public class GameService_FullTest
     public void BuyBuilding_Failure_WhenNoMonopoly()
     {
         IPlayer player = _game.Players.First();
-        IList<ITile> brownTiles = _game.Board.Tiles.Where(t => t.Asset?.Color == Color.Brown).ToList();
+        IList<ITile> brownTiles = _game
+            .Board.Tiles.Where(t => t.Asset?.Color == Color.Brown)
+            .ToList();
         brownTiles[0].Owner = player;
 
-        GameResultDTO<bool> result = _game.BuyBuilding(player, brownTiles[0].Asset!.City.PropertyCity, false);
+        GameResultDTO<bool> result = _game.BuyBuilding(
+            player,
+            brownTiles[0].Asset!.City.PropertyCity,
+            false
+        );
         Assert.That(result.IsSuccess, Is.False);
         Assert.That(result.Error, Does.Contain("monopoli"));
     }
@@ -858,7 +939,11 @@ public class GameService_FullTest
         ITile tile = SetupMonopolyForPlayer(player);
         tile.House = 3;
 
-        GameResultDTO<bool> result = _game.BuyBuilding(player, tile.Asset!.City.PropertyCity, false);
+        GameResultDTO<bool> result = _game.BuyBuilding(
+            player,
+            tile.Asset!.City.PropertyCity,
+            false
+        );
         Assert.That(result.IsSuccess, Is.False);
         Assert.That(result.Error, Does.Contain("maksimum 3 rumah"));
     }
@@ -897,7 +982,8 @@ public class GameService_FullTest
 
         int balBefore = _game.GetPlayerBalance(player).Data;
         GameResultDTO<int> result = _game.SellBuildingsToBank(
-            new SendBuildingToBankResult(player, tile.Asset!.City.PropertyCity, 2, false));
+            new SendBuildingToBankResult(player, tile.Asset!.City.PropertyCity, 2, false)
+        );
 
         Assert.That(result.IsSuccess, Is.True);
         Assert.That(result.Data, Is.GreaterThan(0));
@@ -912,7 +998,8 @@ public class GameService_FullTest
         tile.HasHotel = true;
 
         GameResultDTO<int> result = _game.SellBuildingsToBank(
-            new SendBuildingToBankResult(player, tile.Asset!.City.PropertyCity, 0, true));
+            new SendBuildingToBankResult(player, tile.Asset!.City.PropertyCity, 0, true)
+        );
 
         Assert.That(result.IsSuccess, Is.True);
         Assert.That(tile.HasHotel, Is.False);
@@ -934,7 +1021,8 @@ public class GameService_FullTest
         tile.Owner = _game.Players[1];
 
         GameResultDTO<int> result = _game.SellBuildingsToBank(
-            new SendBuildingToBankResult(player, tile.Asset!.City.PropertyCity, 1, false));
+            new SendBuildingToBankResult(player, tile.Asset!.City.PropertyCity, 1, false)
+        );
 
         Assert.That(result.IsSuccess, Is.False);
         Assert.That(result.Error, Does.Contain("bukan milik"));
@@ -949,7 +1037,8 @@ public class GameService_FullTest
         tile.HasHotel = false;
 
         GameResultDTO<int> result = _game.SellBuildingsToBank(
-            new SendBuildingToBankResult(player, tile.Asset!.City.PropertyCity, 0, false));
+            new SendBuildingToBankResult(player, tile.Asset!.City.PropertyCity, 0, false)
+        );
 
         Assert.That(result.IsSuccess, Is.False);
         Assert.That(result.Error, Does.Contain("Tidak ada bangunan"));
@@ -963,7 +1052,8 @@ public class GameService_FullTest
         tile.House = 1;
 
         GameResultDTO<int> result = _game.SellBuildingsToBank(
-            new SendBuildingToBankResult(player, tile.Asset!.City.PropertyCity, 3, false));
+            new SendBuildingToBankResult(player, tile.Asset!.City.PropertyCity, 3, false)
+        );
 
         Assert.That(result.IsSuccess, Is.False);
         Assert.That(result.Error, Does.Contain("melebihi"));
@@ -984,7 +1074,10 @@ public class GameService_FullTest
     [Test]
     public void SellPropertyToBank_Failure_WhenOwnerIsNull()
     {
-        GameResultDTO<int> result = _game.SellPropertyToBank(null, PropertyCity.MediterraneanAvenue);
+        GameResultDTO<int> result = _game.SellPropertyToBank(
+            null,
+            PropertyCity.MediterraneanAvenue
+        );
         Assert.That(result.IsSuccess, Is.False);
         Assert.That(result.Error, Is.EqualTo("Owner tidak boleh null."));
     }
@@ -1008,7 +1101,11 @@ public class GameService_FullTest
         ITile tile = SetupMonopolyForPlayer(player);
         tile.House = 2;
 
-        GameResultDTO<int> result = _game.SellPropertyToBank(player, tile.Asset!.City.PropertyCity, false);
+        GameResultDTO<int> result = _game.SellPropertyToBank(
+            player,
+            tile.Asset!.City.PropertyCity,
+            false
+        );
         Assert.That(result.IsSuccess, Is.False);
         Assert.That(result.Error, Does.Contain("Jual bangunan terlebih dahulu"));
     }
@@ -1020,7 +1117,11 @@ public class GameService_FullTest
         ITile tile = SetupMonopolyForPlayer(player);
         tile.House = 2;
 
-        GameResultDTO<int> result = _game.SellPropertyToBank(player, tile.Asset!.City.PropertyCity, true);
+        GameResultDTO<int> result = _game.SellPropertyToBank(
+            player,
+            tile.Asset!.City.PropertyCity,
+            true
+        );
         Assert.That(result.IsSuccess, Is.True);
         Assert.That(tile.House, Is.EqualTo(0));
     }
@@ -1064,10 +1165,7 @@ public class GameService_FullTest
     [TestCase(PropertyAvailabilityScenario.Owned, false)]
     [TestCase(PropertyAvailabilityScenario.NoAsset, false)]
     [TestCase(PropertyAvailabilityScenario.NullTile, false)]
-    public void IsPropertyAvailable_ByScenario(
-        PropertyAvailabilityScenario scenario,
-        bool expected
-    )
+    public void IsPropertyAvailable_ByScenario(PropertyAvailabilityScenario scenario, bool expected)
     {
         ITile? tile = scenario switch
         {
@@ -1221,7 +1319,11 @@ public class GameService_FullTest
     [Test]
     public void BuyBuilding_Failure_WhenPlayerNull()
     {
-        GameResultDTO<bool> result = _game.BuyBuilding(null!, PropertyCity.MediterraneanAvenue, false);
+        GameResultDTO<bool> result = _game.BuyBuilding(
+            null!,
+            PropertyCity.MediterraneanAvenue,
+            false
+        );
         Assert.That(result.IsSuccess, Is.False);
     }
 
@@ -1229,7 +1331,11 @@ public class GameService_FullTest
     public void BuyBuilding_Failure_WhenTileNotOwned()
     {
         IPlayer player = CurrentPlayerWithPiece();
-        GameResultDTO<bool> result = _game.BuyBuilding(player, PropertyCity.MediterraneanAvenue, false);
+        GameResultDTO<bool> result = _game.BuyBuilding(
+            player,
+            PropertyCity.MediterraneanAvenue,
+            false
+        );
         Assert.That(result.IsSuccess, Is.False);
     }
 
@@ -1240,7 +1346,11 @@ public class GameService_FullTest
         IPlayer owner = _game.Players[1];
         ITile tile = _game.GetTileByCity(PropertyCity.MediterraneanAvenue);
         tile.Owner = owner;
-        GameResultDTO<bool> result = _game.BuyBuilding(player, PropertyCity.MediterraneanAvenue, false);
+        GameResultDTO<bool> result = _game.BuyBuilding(
+            player,
+            PropertyCity.MediterraneanAvenue,
+            false
+        );
         Assert.That(result.IsSuccess, Is.False);
     }
 
@@ -1251,7 +1361,11 @@ public class GameService_FullTest
         ITile tile = _game.GetTileByCity(PropertyCity.MediterraneanAvenue);
         tile.Owner = player;
 
-        GameResultDTO<bool> result = _game.BuyBuilding(player, PropertyCity.MediterraneanAvenue, false);
+        GameResultDTO<bool> result = _game.BuyBuilding(
+            player,
+            PropertyCity.MediterraneanAvenue,
+            false
+        );
         Assert.That(result.IsSuccess, Is.False);
     }
 
@@ -1262,7 +1376,11 @@ public class GameService_FullTest
         ITile tile = _game.GetTileByCity(PropertyCity.MediterraneanAvenue);
         tile.Owner = player;
         tile.HasHotel = true;
-        GameResultDTO<bool> result = _game.BuyBuilding(player, PropertyCity.MediterraneanAvenue, false);
+        GameResultDTO<bool> result = _game.BuyBuilding(
+            player,
+            PropertyCity.MediterraneanAvenue,
+            false
+        );
         Assert.That(result.IsSuccess, Is.False);
     }
 
@@ -1273,7 +1391,11 @@ public class GameService_FullTest
         ITile tile = _game.GetTileByCity(PropertyCity.MediterraneanAvenue);
         tile.Owner = player;
         tile.House = 3;
-        GameResultDTO<bool> result = _game.BuyBuilding(player, PropertyCity.MediterraneanAvenue, false);
+        GameResultDTO<bool> result = _game.BuyBuilding(
+            player,
+            PropertyCity.MediterraneanAvenue,
+            false
+        );
         Assert.That(result.IsSuccess, Is.False);
     }
 
@@ -1284,9 +1406,14 @@ public class GameService_FullTest
         _game.SubstractPlayerMoney(player, new Money(1400)); // Leave little money
         ITile tile = _game.GetTileByCity(PropertyCity.MediterraneanAvenue);
         tile.Owner = player;
-        GameResultDTO<bool> result = _game.BuyBuilding(player, PropertyCity.MediterraneanAvenue, false);
+        GameResultDTO<bool> result = _game.BuyBuilding(
+            player,
+            PropertyCity.MediterraneanAvenue,
+            false
+        );
         Assert.That(result.IsSuccess, Is.False);
     }
+
     [TestCase(TileType.DrawChance, true, false)]
     [TestCase(TileType.DrawCommunity, true, false)]
     [TestCase(TileType.TaxTile, true, false)]
@@ -1434,7 +1561,11 @@ public class GameService_FullTest
         tile.House = 2;
         tile.HasHotel = true;
 
-        GameResultDTO<int> result = _game.SellPropertyToBank(player, tile.Asset!.City.PropertyCity, true);
+        GameResultDTO<int> result = _game.SellPropertyToBank(
+            player,
+            tile.Asset!.City.PropertyCity,
+            true
+        );
         Assert.That(result.IsSuccess, Is.True);
         Assert.That(tile.Owner, Is.Null);
     }
@@ -1450,9 +1581,14 @@ public class GameService_FullTest
         int steps = _game.Board.Tiles.Length - currentIndex + 1;
         int before = _game.GetPlayerBalance(player).Data;
 
-        GameResultDTO<bool> result = typeof(Game)
-            .GetMethod("MovePiece", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-            !.Invoke(_game, new object?[] { player, steps }) as GameResultDTO<bool>;
+        GameResultDTO<bool> result =
+            typeof(Game)
+                .GetMethod(
+                    "MovePiece",
+                    System.Reflection.BindingFlags.NonPublic
+                        | System.Reflection.BindingFlags.Instance
+                )!
+                .Invoke(_game, new object?[] { player, steps }) as GameResultDTO<bool>;
 
         int after = _game.GetPlayerBalance(player).Data;
         Assert.That(result!.IsSuccess, Is.True);
@@ -1543,7 +1679,8 @@ public class GameService_FullTest
             "_playerData",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
         );
-        Dictionary<IPlayer, List<IMoney>> data = (Dictionary<IPlayer, List<IMoney>>)field!.GetValue(_game)!;
+        Dictionary<IPlayer, List<IMoney>> data =
+            (Dictionary<IPlayer, List<IMoney>>)field!.GetValue(_game)!;
         data.Remove(player);
 
         GameResultDTO<bool> result = _game.AttemptBuyCurrentProperty(player, true);
@@ -1585,7 +1722,9 @@ public class GameService_FullTest
     public void ExecuteCard_Success_WithAdvanceNearestRailroad_WhenNoPiece()
     {
         IPlayer player = _game.Players.First();
-        ICard card = _game.Cards.First(c => c.Behaviour == CardBehaviour.AdvanceNearestRailroad && c is ChanceCard);
+        ICard card = _game.Cards.First(c =>
+            c.Behaviour == CardBehaviour.AdvanceNearestRailroad && c is ChanceCard
+        );
         GameResultDTO<bool> result = _game.ExecuteCard(card, player);
         Assert.That(result.IsSuccess, Is.True);
     }
@@ -1595,7 +1734,9 @@ public class GameService_FullTest
     {
         IPlayer player = CurrentPlayerWithPiece();
         int before = player.JailFreeCardCount;
-        ICard card = _game.Cards.First(c => c.Behaviour == CardBehaviour.GetOutOfJailFree && c is ChanceCard);
+        ICard card = _game.Cards.First(c =>
+            c.Behaviour == CardBehaviour.GetOutOfJailFree && c is ChanceCard
+        );
 
         GameResultDTO<bool> result = _game.ExecuteCard(card, player);
         Assert.That(result.IsSuccess, Is.True);
@@ -1641,7 +1782,6 @@ public class GameService_FullTest
         IPlayer? found = _game.FindPlayerByName("player1");
         Assert.That(found, Is.Not.Null);
     }
-
 
     [Test]
     public void GetWinnerOrNull_ReturnsFailure_WhenMultipleActivePlayers()

@@ -9,8 +9,8 @@ public static class GameStateMapper
 {
     public static GameStateResponse BuildState(Game game)
     {
-        List<PlayerResponseDTO> players = game.Players
-            .Select(p =>
+        List<PlayerResponseDTO> players = game
+            .Players.Select(p =>
             {
                 GameResultDTO<int> balanceResult = game.GetPlayerBalance(p);
                 int balance = balanceResult.IsSuccess ? balanceResult.Data : 0;
@@ -42,11 +42,6 @@ public static class GameStateMapper
         GameResultDTO<IPlayer?> winnerResult = game.GetWinnerOrNull();
         string? winnerName = winnerResult.IsSuccess ? winnerResult.Data?.Name : null;
 
-        return new GameStateResponse(
-            game.GameEnded,
-            winnerName,
-            game.CurrentPlayer.Name,
-            players
-        );
+        return new GameStateResponse(game.GameEnded, winnerName, game.CurrentPlayer.Name, players);
     }
 }
