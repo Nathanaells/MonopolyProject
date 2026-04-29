@@ -3,6 +3,7 @@ namespace Backend.Domain.Entities;
 using Backend.Domain.DTOs;
 using Backend.Domain.Enums;
 using Backend.Domain.Interfaces;
+using Backend.Helpers;
 
 public class Game
 {
@@ -196,6 +197,7 @@ public class Game
                 }
 
                 GameResultDTO<ITile?> tileResult = GetCurrentTile(player);
+
                 if (!tileResult.IsSuccess || tileResult.Data == null)
                 {
                     return GameResultDTO<RollTurnResult>.Failure(tileResult.Error!);
@@ -295,7 +297,6 @@ public class Game
         }
 
         //Check Bankruptcy
-
         if (CheckBankruptcy(player))
         {
             RemovePlayer(player);
@@ -345,12 +346,14 @@ public class Game
 
         //! Move
         GameResultDTO<bool> moveResultNormal = MovePiece(player, total);
+
         if (!moveResultNormal.IsSuccess)
         {
             return GameResultDTO<RollTurnResult>.Failure(moveResultNormal.Error!);
         }
 
         GameResultDTO<ITile?> tileResultAfterMove = GetCurrentTile(player);
+
         if (!tileResultAfterMove.IsSuccess || tileResultAfterMove.Data == null)
         {
             return GameResultDTO<RollTurnResult>.Failure(tileResultAfterMove.Error!);
@@ -403,7 +406,7 @@ public class Game
         );
     }
 
-    private void EndTurn(bool repeatTurn)
+    public void EndTurn(bool repeatTurn)
     {
         EndGame();
 
@@ -415,7 +418,7 @@ public class Game
         Phase = GamePhase.WaitingRoll;
     }
 
-    private HandleTileResultDTO HandleTileEffectsAfterMove(IPlayer player, ITile tile)
+    public HandleTileResultDTO HandleTileEffectsAfterMove(IPlayer player, ITile tile)
     {
         if (IsPropertyAvailable(tile))
         {
@@ -437,7 +440,7 @@ public class Game
         };
     }
 
-    private GameResultDTO<bool> MovePiece(IPlayer player, int? step = null)
+    public GameResultDTO<bool> MovePiece(IPlayer player, int? step = null)
     {
         if (player == null)
         {
@@ -999,7 +1002,7 @@ public class Game
             return noMonopolyResult;
         }
 
-        int housePrice = GetHousePrice(tile.Asset);
+        int housePrice = GameHelper.GetHousePrice(tile.Asset);
         int currentHouses = tile.House ?? 0;
         bool hasHotel = tile.HasHotel ?? false;
 
@@ -1095,23 +1098,6 @@ public class Game
         return successResult;
     }
 
-    private int GetHousePrice(IAsset asset)
-    {
-        int price = asset.Color switch
-        {
-            Color.Brown => 50,
-            Color.LightBlue => 50,
-            Color.Pink => 100,
-            Color.Orange => 100,
-            Color.Red => 150,
-            Color.Yellow => 150,
-            Color.Green => 200,
-            Color.DarkBlue => 200,
-            _ => 100,
-        };
-        return price;
-    }
-
     public GameResultDTO<int> SellBuildingsToBank(SendBuildingToBankResult sellInfo)
     {
         if (sellInfo == null)
@@ -1151,7 +1137,7 @@ public class Game
         }
 
         int soldValue = 0;
-        int houseSellPrice = GetHousePrice(tile.Asset) / 2;
+        int houseSellPrice = GameHelper.GetHousePrice(tile.Asset) / 2;
 
         if (sellInfo.SellHotel && hasHotel)
         {

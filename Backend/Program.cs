@@ -20,6 +20,10 @@ Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
     .MinimumLevel.Override("System", Serilog.Events.LogEventLevel.Warning)
     .MinimumLevel.Override("Microsoft.AspNetCore.HttpsPolicy", Serilog.Events.LogEventLevel.Error)
+    .WriteTo.Console(
+        outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz}] [{Level:u3}] [{SourceContext}] "
+            + "{Message:lj} {Properties:j}{NewLine}{Exception}"
+    )
     .WriteTo.File(
         Path.Combine(logPath, "application-.log"),
         rollingInterval: RollingInterval.Day,
