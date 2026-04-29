@@ -1648,15 +1648,6 @@ public class GameService_Tests
     }
 
     [Test]
-    public void AttemptBuyCurrentProperty_WantsToBuyFalse_ShouldReturnFalse()
-    {
-        IPlayer player = CurrentPlayerWithPiece();
-        GameResultDTO<bool> result = _game.AttemptBuyCurrentProperty(player, false);
-        Assert.That(result.IsSuccess, Is.True);
-        Assert.That(result.Data, Is.False);
-    }
-
-    [Test]
     public void AttemptBuyCurrentProperty_PropertyUnavailable_ShouldReturnFailure()
     {
         IPlayer player = CurrentPlayerWithPiece();

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import type { DiceProps } from "../Interfaces/Interface";
+import type {DiceProps} from "../Interfaces/Interface"
+
 
 const dotPosition: Record<number, Array<[number, number]>> = {
   1: [[50, 50]],
@@ -43,6 +44,7 @@ function DiceFace({
   className?: string;
 }) {
   const dots = dotPosition[value] ?? dotPosition[1];
+
   return (
     <div
       className={`relative w-14 h-14 rounded-xl shadow-lg select-none ${className}`}
@@ -67,12 +69,7 @@ function DiceFace({
   );
 }
 
-export default function DiceAnimation({
-  dice1,
-  dice2,
-  rolling,
-  onDone,
-}: DiceProps) {
+export default function DiceAnimation({ dice1, dice2, rolling, onDone }: DiceProps) {
   const [display1, setDisplay1] = useState(dice1);
   const [display2, setDisplay2] = useState(dice2);
   const [shake, setShake] = useState(false);

@@ -560,6 +560,7 @@ public class Game
     private void MoveToNearestRailroad(IPlayer player)
     {
         GameResultDTO<ITile?> currentTileResult = GetCurrentTile(player);
+
         if (!currentTileResult.IsSuccess || currentTileResult.Data == null)
         {
             return;
